@@ -1,7 +1,7 @@
 """
 title: 🚀 Advanced Context Manager - Zero-Loss Coverage-First v2.4.5
 author: JiangNanGenius
-version: 2.4.5
+version: 2.4.6
 license: MIT
 required_open_webui_version: 0.5.17
 Github: https://github.com/JiangNanGenius
@@ -387,6 +387,7 @@ class ProgressTracker:
                 # 基本清理
                 message = message.replace("\n", " ").replace("\r", " ")
                 message = re.sub(r"\s+", " ", message).strip()
+
                 await self.event_emitter(
                     {
                         "type": "status",
@@ -460,6 +461,12 @@ class ModelMatcher:
                 "limit": 16385,
                 "image_tokens": 0,
             },
+            "gpt-oss-120b": {
+                "family": "gpt",
+                "multimodal": False,
+                "limit": 124000,
+                "image_tokens": 0,
+            },
             # ===== Anthropic / Claude 家族（更新 4 / 4.1）=====
             "claude-4.1": {
                 "family": "claude",
@@ -528,8 +535,20 @@ class ModelMatcher:
             },
             "doubao-seed-1-6-250615": {
                 "family": "doubao",
+                "multimodal": False,
+                "limit": 256000,
+                "image_tokens": 1000,
+            },
+            "doubao-seed-1-6-251015": {
+                "family": "doubao",
+                "multimodal": False,
+                "limit": 256000,
+                "image_tokens": 1000,
+            },
+            "doubao-seed-1-6-vision-250815": {
+                "family": "doubao",
                 "multimodal": True,
-                "limit": 50000,
+                "limit": 2560000,
                 "image_tokens": 1000,
             },
             "doubao-seed": {
@@ -583,6 +602,18 @@ class ModelMatcher:
                 "limit": 128000,
                 "image_tokens": 0,
             },
+            "qwen3-max": {
+                "family": "qwen",
+                "multimodal": False,
+                "limit": 256000,
+                "image_tokens": 0,
+            },
+            "qwen3-vl-plus": {
+                "family": "qwen",
+                "multimodal": True,
+                "limit": 256000,
+                "image_tokens": 1000,
+            },
             # ===== Huawei / Pangu =====
             "pangu-pro-moe": {
                 "family": "pangu",
@@ -601,6 +632,18 @@ class ModelMatcher:
                 "family": "glm",
                 "multimodal": False,
                 "limit": 128000,
+                "image_tokens": 0,
+            },
+            "zai-org/GLM-4.6": {
+                "family": "glm",
+                "multimodal": False,
+                "limit": 198000,
+                "image_tokens": 0,
+            },
+            "glm-4.6": {
+                "family": "glm",
+                "multimodal": False,
+                "limit": 198000,
                 "image_tokens": 0,
             },
             # ===== Tencent / Hunyuan =====
@@ -627,6 +670,18 @@ class ModelMatcher:
                 "family": "kimi",
                 "multimodal": False,
                 "limit": 128000,
+                "image_tokens": 0,
+            },
+            "kimi-k2-thinking": {
+                "family": "kimi",
+                "multimodal": False,
+                "limit": 256000,
+                "image_tokens": 0,
+            },
+            "kimi-k2-turbo-preview": {
+                "family": "kimi",
+                "multimodal": False,
+                "limit": 256000,
                 "image_tokens": 0,
             },
             # ===== Baidu / ERNIE 4 / 4.5 =====
@@ -673,6 +728,45 @@ class ModelMatcher:
                 "limit": 128000,
                 "image_tokens": 0,
             },
+            # ===== DEEPSEEK =====
+            "deepseek-chat": {
+                "family": "deepseek",
+                "multimodal": False,
+                "limit": 128000,
+                "image_tokens": 0,
+            },
+            "deepseek-reasoner": {
+                "family": "deepseek",
+                "multimodal": False,
+                "limit": 128000,
+                "image_tokens": 0,
+            },
+            # === inclusionAI ===
+            "inclusionAI/Ling-1T": {
+                "family": "inclusionai",
+                "multimodal": False,
+                "limit": 128000,
+                "image_tokens": 0,
+            },
+            "inclusionAI/Ring-1T": {
+                "family": "inclusionai",
+                "multimodal": False,
+                "limit": 128000,
+                "image_tokens": 0,
+            },
+            # === MiniMax ===
+            "MiniMaxAI/MiniMax-M2": {
+                "family": "inclusionai",
+                "multimodal": False,
+                "limit": 192000,
+                "image_tokens": 0,
+            },
+            "MiniMaxAI/MiniMax-M1-80k": {
+                "family": "inclusionai",
+                "multimodal": False,
+                "limit": 128000,
+                "image_tokens": 0,
+            },
         }
 
         # 模糊匹配规则（更新版本）
@@ -702,7 +796,7 @@ class ModelMatcher:
                 "image_tokens": 1800,
             },
             {
-                "pattern": r"gpt-5.*",
+                "pattern": r"gpt-5(?!.*nano)(?!.*mini).*",
                 "family": "gpt",
                 "multimodal": True,
                 "limit": 200000,
@@ -811,10 +905,17 @@ class ModelMatcher:
             },
             # ===== Zhipu / GLM =====
             {
-                "pattern": r"(?:zai-org/)?glm-4\.5.*",
+                "pattern": r"(?i)(?:zai-org/)?glm-4\.5(?!V).*",  # 匹配 glm-4.5 (大小写兼容)，排除 glm-4.5V
                 "family": "glm",
                 "multimodal": False,
                 "limit": 128000,
+                "image_tokens": 0,
+            },
+            {
+                "pattern": r"(?i)(?:zai-org/)?glm-4\.5V.*",  # 匹配 glm-4.5V (大小写兼容)
+                "family": "glm",
+                "multimodal": True,
+                "limit": 64000,
                 "image_tokens": 0,
             },
             # ===== Alibaba / Qwen =====
@@ -1053,6 +1154,7 @@ class InputCleaner:
         """清洗文本用于正则表达式，防止语法错误"""
         if not text:
             return ""
+
         try:
             # 移除不可见分隔符
             text = text.replace("\u2028", " ").replace("\u2029", " ")
@@ -1156,13 +1258,11 @@ class MessageChunker:
     ) -> List[dict]:
         """对单条消息进行分片处理"""
         content_text = self.extract_text_content(message)
-
         if not self.should_chunk_message(message):
             return [message]  # 不需要分片
 
         # 分片策略：保持代码块/段落/句子完整
         chunks = self._intelligent_chunk_text(content_text)
-
         if len(chunks) <= 1:
             return [message]  # 分片后只有一个，直接返回原消息
 
@@ -1172,7 +1272,6 @@ class MessageChunker:
 
         for i, chunk_text in enumerate(chunks):
             chunk_id = message_order.generate_chunk_id(msg_id, i)
-
             chunk_message = copy.deepcopy(message)
             chunk_message["content"] = chunk_text
             chunk_message["_order_id"] = chunk_id
@@ -1180,7 +1279,6 @@ class MessageChunker:
             chunk_message["_parent_msg_id"] = msg_id
             chunk_message["_chunk_index"] = i
             chunk_message["_total_chunks"] = len(chunks)
-
             chunked_messages.append(chunk_message)
 
         return chunked_messages
@@ -1326,6 +1424,7 @@ class CoveragePlanner:
     ) -> Tuple[List[dict], List[dict], List[dict]]:
         """按分数分档消息"""
         HIGH, MID, LOW = [], [], []
+
         for item in scored_msgs:
             if item["score"] >= self.valves.coverage_high_score_threshold:
                 HIGH.append(item)
@@ -1333,6 +1432,7 @@ class CoveragePlanner:
                 MID.append(item)
             else:
                 LOW.append(item)
+
         return HIGH, MID, LOW
 
     def _create_adaptive_blocks(self, low_messages: List[dict]) -> List[dict]:
@@ -1342,6 +1442,7 @@ class CoveragePlanner:
 
         # 按原始索引排序
         low_sorted = sorted(low_messages, key=lambda x: x["idx"])
+
         blocks = []
         current_block = []
         current_tokens = 0
@@ -1431,9 +1532,9 @@ class CoveragePlanner:
 
         # 按raw_tokens排序，优先合并小块
         blocks.sort(key=lambda x: x["raw_tokens"])
+
         merged_blocks = []
         i = 0
-
         while i < len(blocks):
             current_block = blocks[i]
 
@@ -1507,7 +1608,6 @@ class CoveragePlanner:
             floor_budget = max(
                 self.valves.min_block_summary_tokens, self.valves.floor_block
             )
-
             # 理想预算：基础 + 按原文token量的比例分配
             size_factor = min(3.0, block["raw_tokens"] / self.valves.raw_block_target)
             ideal_budget = int(
@@ -1706,6 +1806,14 @@ class Filter:
         )
         excluded_models: str = Field(
             default="", description="🚫 排除模型列表(逗号分隔)"
+        )
+
+        # 新增配置：关闭闲时前端、禁用默认 Top-up
+        suppress_frontend_when_idle: bool = Field(
+            default=True, description="🕶️ 无需处理时不显示任何前端进度/日志"
+        )
+        enable_window_topup: bool = Field(
+            default=False, description="🧯 仅在超限压缩后才允许窗口填充"
         )
 
         # 核心配置
@@ -2303,6 +2411,32 @@ class Filter:
 
         return int(target_tokens)
 
+    # ========== 新增：正确的"是否需要处理"判定 ==========
+    def _needs_processing(
+        self, messages: List[dict], model_name: str, target_tokens: int
+    ):
+        """判定是否需要进行处理"""
+        current_tokens = self.count_messages_tokens(messages)
+        has_images = self.has_images_in_messages(messages)
+        model_is_multimodal = self.is_multimodal_model(model_name)
+
+        token_overflow = current_tokens > target_tokens
+        multimodal_incompatible = has_images and (not model_is_multimodal)
+
+        return (
+            (token_overflow or multimodal_incompatible),
+            token_overflow,
+            multimodal_incompatible,
+        )
+
+    # ========== 修正的"是否需要最大化"判定 ==========
+    def should_force_maximize_content(
+        self, messages: List[dict], target_tokens: int
+    ) -> bool:
+        """判断是否应该强制进行内容最大化处理 - 修正版：只有超限才处理"""
+        current_tokens = self.count_messages_tokens(messages)
+        return current_tokens > target_tokens
+
     # ========== 多模态处理 ==========
     def has_images_in_content(self, content) -> bool:
         """检查内容中是否包含图片"""
@@ -2379,7 +2513,6 @@ class Filter:
                 else:
                     self.debug_log(1, f"{call_name} 最终失败: {error_msg[:100]}", "❌")
                     return None
-
         return None
 
     # ========== 上下文最大化检测 ==========
@@ -2718,7 +2851,6 @@ class Filter:
             lightweight_scored = self._compute_lightweight_scores(
                 query_text, history_msgs
             )
-
             # 选择top-K进入第二阶段
             top_k = min(self.valves.vector_top_k, len(lightweight_scored))
             lightweight_scored.sort(key=lambda x: x["score"], reverse=True)
@@ -2981,7 +3113,6 @@ class Filter:
                 continue
 
             score = item["score"]
-
             # 最近性权重，但设上限防止极长消息挤爆池子
             if item["recency"] > 0.8:
                 recency_boost = min(
@@ -3089,10 +3220,12 @@ class Filter:
         # 合并消息内容
         combined_content = ""
         has_multimodal = False
+
         for i, msg in enumerate(msgs):
             role = msg.get("role", "")
             content = self.extract_text_from_content(msg.get("content", ""))
             combined_content += f"[消息{idx_range[0] + i}:{role}] {content}\n\n"
+
             if self.has_images_in_content(msg.get("content")):
                 has_multimodal = True
 
@@ -3112,7 +3245,6 @@ class Filter:
         model_to_use = (
             self.valves.multimodal_model if has_multimodal else self.valves.text_model
         )
-
         self.stats.summary_requests += 1
 
         response = await client.chat.completions.create(
@@ -3147,6 +3279,7 @@ class Filter:
             role = msg.get("role", "")
             content = self.extract_text_from_content(msg.get("content", ""))
             combined_content += f"[消息样本{i}:{role}] {content[:200]}...\n\n"
+
             if self.has_images_in_content(msg.get("content")):
                 has_multimodal = True
 
@@ -3166,7 +3299,6 @@ class Filter:
         model_to_use = (
             self.valves.multimodal_model if has_multimodal else self.valves.text_model
         )
-
         self.stats.summary_requests += 1
 
         response = await client.chat.completions.create(
@@ -3304,13 +3436,11 @@ class Filter:
             if isinstance(result, Exception):
                 self.stats.api_failures += 1
                 continue
-
             key, summary = result
             if key and summary:
                 summaries[key] = summary
 
         self.debug_log(1, f"并发摘要生成完成: {len(summaries)}个摘要", "📝")
-
         return summaries
 
     # ========== 组装阶段双重护栏（修正覆盖率计算） ==========
@@ -3674,12 +3804,14 @@ class Filter:
         available_tokens: int,
         progress: ProgressTracker,
         query_message: dict,
+        allow_topup: bool = False,  # 新增参数
     ) -> List[dict]:
         """Coverage-First上下文最大化处理主流程 v2.4.5"""
         if not history_messages or not self.valves.enable_coverage_first:
             return history_messages
 
         await progress.start_phase("Coverage-First处理", len(history_messages))
+
         self.debug_log(
             1,
             f"Coverage-First开始: {len(history_messages)}条消息, 可用预算: {available_tokens:,}tokens",
@@ -3721,7 +3853,6 @@ class Filter:
         # 为覆盖分配预算（先预留升级池）
         upgrade_pool = int(available_tokens * self.valves.upgrade_min_pct)
         coverage_budget = available_tokens - upgrade_pool
-
         coverage_entries, coverage_cost = (
             self.coverage_planner.plan_adaptive_coverage_summaries(
                 scored_msgs, coverage_budget
@@ -3769,11 +3900,12 @@ class Filter:
             processed_history, preserve_set, coverage_entries, summaries, progress
         )
 
-        # Step 6: Top-up窗口填充（修正统计）
-        await progress.update_progress(6, 8, "Top-up窗口填充")
-        final_messages = self.topup_fill_window(
-            final_messages, scored_msgs, available_tokens, summaries, preserve_set
-        )
+        # Step 6: Top-up窗口填充（修正统计）- 只在允许时执行
+        if allow_topup and self.valves.enable_window_topup:
+            await progress.update_progress(6, 8, "Top-up窗口填充")
+            final_messages = self.topup_fill_window(
+                final_messages, scored_msgs, available_tokens, summaries, preserve_set
+            )
 
         # Step 7: 最终统计
         await progress.update_progress(7, 8, "最终统计计算")
@@ -3854,6 +3986,7 @@ class Filter:
             else:
                 self.stats.image_processing_errors += 1
                 return "图片识别失败：API返回空响应"
+
         except Exception as e:
             self.debug_log(1, f"图片识别异常: {str(e)[:100]}", "❌")
             self.stats.image_processing_errors += 1
@@ -3906,6 +4039,7 @@ class Filter:
             elif item.get("type") == "image_url":
                 image_count += 1
                 image_data = item.get("image_url", {}).get("url", "")
+
                 # 校验 URL / data URI
                 is_valid, cleaned = self.input_cleaner.validate_and_clean_image_url(
                     image_data
@@ -3914,16 +4048,19 @@ class Filter:
                     self.stats.image_processing_errors += 1
                     processed_content.append(f"[图片{image_count}无法识别]")
                     continue
+
                 if progress:
                     await progress.update_progress(
                         image_count,
                         len(images),
                         f"处理图片 {image_count}/{len(images)}",
                     )
+
                 # describe_image 内部也会再次校验，这里传 cleaned 或原始都可
                 description = await self.describe_image(
                     cleaned, progress.event_emitter if progress else None
                 )
+
                 image_description = f"[图片{image_count}描述] {description}"
                 processed_content.append(image_description)
 
@@ -3947,6 +4084,7 @@ class Filter:
         current_tokens = self.count_messages_tokens(messages)
         usage_ratio = current_tokens / target_tokens if target_tokens > 0 else 1.0
         threshold = self.valves.multimodal_direct_threshold
+
         is_sufficient = usage_ratio <= threshold
 
         self.debug_log(
@@ -4075,6 +4213,7 @@ class Filter:
 
         for original_idx, msg, priority in message_priorities:
             msg_tokens = self.count_message_tokens(msg)
+
             if used_tokens + msg_tokens <= target_tokens:
                 selected_messages.append((original_idx, msg, priority))
                 used_tokens += msg_tokens
@@ -4094,6 +4233,7 @@ class Filter:
                     used_tokens += msg_tokens
                     remaining_budget -= msg_tokens
                     recovered_count += 1
+
                     if remaining_budget < 100:
                         break
 
@@ -4199,27 +4339,6 @@ class Filter:
         return filtered_messages
 
     # ========== 主要处理逻辑 ==========
-    def should_force_maximize_content(
-        self, messages: List[dict], target_tokens: int
-    ) -> bool:
-        """判断是否应该强制进行内容最大化处理"""
-        current_tokens = self.count_messages_tokens(messages)
-        utilization = current_tokens / target_tokens if target_tokens > 0 else 0
-
-        should_maximize = (
-            utilization < self.valves.max_window_utilization
-            or current_tokens > target_tokens
-        )
-
-        self.debug_log(
-            1,
-            f"内容最大化判断: {current_tokens:,}tokens / {target_tokens:,}tokens = {utilization:.1%}",
-            "🔥",
-        )
-        self.debug_log(1, f"需要最大化: {should_maximize}", "🔥")
-
-        return should_maximize
-
     async def maximize_content_comprehensive_processing_v2(
         self, messages: List[dict], target_tokens: int, progress: ProgressTracker
     ) -> List[dict]:
@@ -4275,6 +4394,7 @@ class Filter:
             need_context_max = await self.detect_context_max_need(
                 query_text, progress.event_emitter
             )
+
             if need_context_max:
                 self.debug_log(
                     1, f"检测到需要上下文最大化，启用Coverage-First策略", "📚"
@@ -4312,6 +4432,7 @@ class Filter:
                     available_for_processing,
                     progress,
                     current_user_message,
+                    allow_topup=True and self.valves.enable_window_topup,  # 修改调用
                 )
             )
         else:
@@ -4442,8 +4563,22 @@ class Filter:
         # 分析模型信息
         self.current_model_info = self.analyze_model(model_name)
 
-        # 创建进度追踪器
-        progress = ProgressTracker(__event_emitter__)
+        # 计算目标/判定是否需要处理
+        original_tokens = self.count_messages_tokens(messages)
+        model_token_limit = self.get_model_token_limit(model_name)
+        current_user_tokens = (
+            self.count_message_tokens(self.find_current_user_message(messages))
+            if self.find_current_user_message(messages)
+            else 0
+        )
+        target_tokens = self.calculate_target_tokens(model_name, current_user_tokens)
+        needs_proc, token_overflow, mm_incompat = self._needs_processing(
+            messages, model_name, target_tokens
+        )
+
+        # 修正的进度追踪器逻辑
+        show_progress = needs_proc or not self.valves.suppress_frontend_when_idle
+        progress = ProgressTracker(__event_emitter__ if show_progress else None)
 
         # 初始化消息顺序管理器（不再deepcopy，直接在原消息上打标签）
         self.message_order = MessageOrder(messages)
@@ -4456,16 +4591,6 @@ class Filter:
             self.separate_current_and_history_messages(messages)
         )
         self.current_user_message = current_user_message
-
-        # Token分析
-        original_tokens = self.count_messages_tokens(messages)
-        model_token_limit = self.get_model_token_limit(model_name)
-        current_user_tokens = (
-            self.count_message_tokens(current_user_message)
-            if current_user_message
-            else 0
-        )
-        target_tokens = self.calculate_target_tokens(model_name, current_user_tokens)
 
         # 更新统计
         self.stats.token_limit = model_token_limit
@@ -4487,11 +4612,12 @@ class Filter:
             ).hexdigest()[:8]
             self.current_processing_id = processing_id
 
-            # AI检测上下文最大化
-            query_text = self.extract_text_from_content(
-                current_user_message.get("content", "")
-            )
-            if self.valves.enable_ai_context_max_detection:
+            # AI"上下文最大化"只作为策略参考，绝不强制触发处理
+            need_context_max = False
+            if False and self.valves.enable_ai_context_max_detection and needs_proc:
+                query_text = self.extract_text_from_content(
+                    current_user_message.get("content", "")
+                )
                 try:
                     need_context_max = await self.detect_context_max_need(
                         query_text, __event_emitter__
@@ -4505,8 +4631,8 @@ class Filter:
                         print(f"AI检测失败: {e}")
                     need_context_max = self.is_context_max_need_simple(query_text)
 
-        # 判断是否需要最大化
-        should_maximize = self.should_force_maximize_content(messages, target_tokens)
+        # 最终是否进入重处理：仅当确实"需要处理"
+        should_maximize = needs_proc
 
         try:
             # 1. 多模态处理
@@ -4518,7 +4644,94 @@ class Filter:
             )
             processed_tokens = self.count_messages_tokens(processed_messages)
 
-            # 2. Coverage-First v2.4.5内容最大化处理
+            # 轻量兜底：若用户消息仍是列表/字典，强制转为纯文本（保留未描述的图片为占位符）
+            _post_tmp_user = self.find_current_user_message(processed_messages)
+            if _post_tmp_user is not None:
+                c = _post_tmp_user.get("content")
+                if not isinstance(c, str):
+                    parts = []
+                    if isinstance(c, list):
+                        for it in c:
+                            if isinstance(it, str):
+                                parts.append(it)
+                            elif isinstance(it, dict):
+                                t = it.get("type")
+                                if t == "text" and isinstance(it.get("text"), str):
+                                    parts.append(it["text"])
+                                elif t == "image_url":
+                                    img = it.get("image_url")
+                                    url = (
+                                        img.get("url", "")
+                                        if isinstance(img, dict)
+                                        else (img if isinstance(img, str) else "")
+                                    )
+                                    parts.append(f"[图片] {url}" if url else "[图片]")
+                                elif isinstance(it.get("content"), str):
+                                    parts.append(it["content"])
+                    elif isinstance(c, dict):
+                        if c.get("type") == "text" and isinstance(c.get("text"), str):
+                            parts.append(c["text"])
+                        elif c.get("type") == "image_url":
+                            img = c.get("image_url")
+                            url = (
+                                img.get("url", "")
+                                if isinstance(img, dict)
+                                else (img if isinstance(img, str) else "")
+                            )
+                            parts.append(f"[图片] {url}" if url else "[图片]")
+                        elif isinstance(c.get("content"), str):
+                            parts.append(c["content"])
+                    _post_tmp_user["content"] = "\n".join(
+                        p for p in parts if isinstance(p, str)
+                    ).strip()
+            processed_tokens = self.count_messages_tokens(processed_messages)
+
+            # 🔁 基于“转写后”重新评估是否需要处理（权威判定）
+            _post_user = self.find_current_user_message(processed_messages)
+            _post_user_tokens = (
+                self.count_message_tokens(_post_user) if _post_user else 0
+            )
+            target_tokens = self.calculate_target_tokens(model_name, _post_user_tokens)
+            post_needs_proc, post_token_overflow, post_mm_incompat = (
+                self._needs_processing(processed_messages, model_name, target_tokens)
+            )
+
+            # 2) 若转写后已满足窗口/多模态约束 => 直接原文通行
+            if not post_needs_proc:
+                self.stats.original_tokens = self.count_messages_tokens(messages)
+                self.stats.original_messages = len(messages)
+                self.stats.final_tokens = processed_tokens
+                self.stats.final_messages = len(processed_messages)
+                body["messages"] = copy.deepcopy(processed_messages)
+                if self.valves.debug_level >= 1:
+                    print("无需处理：多模态转写后未超限，直接返回原文（或转写后）")
+                return body
+
+            # 2.5) （后移）AI 上下文最大化检测：仅当仍需处理
+            should_maximize = post_needs_proc
+            if (
+                self.valves.enable_ai_context_max_detection
+                and should_maximize
+                and _post_user
+            ):
+                query_text = self.extract_text_from_content(
+                    _post_user.get("content", "")
+                )
+                try:
+                    need_context_max = await self.detect_context_max_need(
+                        query_text, __event_emitter__
+                    )
+                    if self.valves.debug_level >= 1:
+                        print(
+                            f"上下文最大化检测(后移): {'需要' if need_context_max else '不需要'}"
+                        )
+                    if not need_context_max:
+                        should_maximize = False
+                except Exception as e:
+                    if self.valves.debug_level >= 1:
+                        print(f"AI检测(后移)失败: {e}")
+
+            # 3. Coverage-First 仅在确需处理时启用
             if should_maximize:
                 final_messages = (
                     await self.maximize_content_comprehensive_processing_v2(
@@ -4547,7 +4760,6 @@ class Filter:
                     last_msg = final_messages[-1]
                     if last_msg.get("role") == "user" and self.valves.debug_level >= 1:
                         print(f"当前用户消息保护: ✅")
-
             else:
                 # 直接使用处理后的消息
                 self.stats.original_tokens = self.count_messages_tokens(messages)
