@@ -1,4 +1,4 @@
-# 🚀 Advanced Context Manager - Zero‑Loss Coverage‑First v2.4.5
+# 🚀 Advanced Context Manager - Zero‑Loss Coverage‑First v2.4.6
 
 > Open WebUI 插件 / Pipeline 组件 · 智能长上下文管理 + 多模态处理 · **零丢失保障**
 
