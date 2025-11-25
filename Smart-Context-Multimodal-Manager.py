@@ -1,7 +1,7 @@
 """
 title: 🚀 Advanced Context Manager - Zero-Loss Coverage-First v2.4.5
 author: JiangNanGenius
-version: 2.4.6
+version: 2.4.7
 license: MIT
 required_open_webui_version: 0.5.17
 Github: https://github.com/JiangNanGenius
@@ -2314,6 +2314,40 @@ class Filter:
             "📊",
         )
         return total_tokens
+
+    def strip_internal_fields(self, messages: List[dict]) -> List[dict]:
+        """移除消息中的内部字段（以下划线开头），确保兼容 OpenAI API。"""
+        if not messages:
+            return []
+
+        cleaned_messages: List[dict] = []
+
+        for msg in messages:
+            if not isinstance(msg, dict):
+                cleaned_messages.append(msg)
+                continue
+
+            # 去除消息级别的内部字段
+            new_msg: dict = {k: v for k, v in msg.items() if not str(k).startswith("_")}
+
+            content = new_msg.get("content")
+
+            # 处理多模态 content 列表
+            if isinstance(content, list):
+                new_content = []
+                for item in content:
+                    if isinstance(item, dict):
+                        new_item = {
+                            k: v for k, v in item.items() if not str(k).startswith("_")
+                        }
+                        new_content.append(new_item)
+                    else:
+                        new_content.append(item)
+                new_msg["content"] = new_content
+
+            cleaned_messages.append(new_msg)
+
+        return cleaned_messages
 
     def get_model_token_limit(self, model_name: str) -> int:
         """获取模型的token限制（应用安全系数）"""
@@ -4645,45 +4679,50 @@ class Filter:
             processed_tokens = self.count_messages_tokens(processed_messages)
 
             # 轻量兜底：若用户消息仍是列表/字典，强制转为纯文本（保留未描述的图片为占位符）
-            _post_tmp_user = self.find_current_user_message(processed_messages)
-            if _post_tmp_user is not None:
-                c = _post_tmp_user.get("content")
-                if not isinstance(c, str):
-                    parts = []
-                    if isinstance(c, list):
-                        for it in c:
-                            if isinstance(it, str):
-                                parts.append(it)
-                            elif isinstance(it, dict):
-                                t = it.get("type")
-                                if t == "text" and isinstance(it.get("text"), str):
-                                    parts.append(it["text"])
-                                elif t == "image_url":
-                                    img = it.get("image_url")
-                                    url = (
-                                        img.get("url", "")
-                                        if isinstance(img, dict)
-                                        else (img if isinstance(img, str) else "")
-                                    )
-                                    parts.append(f"[图片] {url}" if url else "[图片]")
-                                elif isinstance(it.get("content"), str):
-                                    parts.append(it["content"])
-                    elif isinstance(c, dict):
-                        if c.get("type") == "text" and isinstance(c.get("text"), str):
-                            parts.append(c["text"])
-                        elif c.get("type") == "image_url":
-                            img = c.get("image_url")
-                            url = (
-                                img.get("url", "")
-                                if isinstance(img, dict)
-                                else (img if isinstance(img, str) else "")
-                            )
-                            parts.append(f"[图片] {url}" if url else "[图片]")
-                        elif isinstance(c.get("content"), str):
-                            parts.append(c["content"])
-                    _post_tmp_user["content"] = "\n".join(
-                        p for p in parts if isinstance(p, str)
-                    ).strip()
+            if not self.is_multimodal_model(model_name):
+                _post_tmp_user = self.find_current_user_message(processed_messages)
+                if _post_tmp_user is not None:
+                    c = _post_tmp_user.get("content")
+                    if not isinstance(c, str):
+                        parts = []
+                        if isinstance(c, list):
+                            for it in c:
+                                if isinstance(it, str):
+                                    parts.append(it)
+                                elif isinstance(it, dict):
+                                    t = it.get("type")
+                                    if t == "text" and isinstance(it.get("text"), str):
+                                        parts.append(it["text"])
+                                    elif t == "image_url":
+                                        img = it.get("image_url")
+                                        url = (
+                                            img.get("url", "")
+                                            if isinstance(img, dict)
+                                            else (img if isinstance(img, str) else "")
+                                        )
+                                        parts.append(
+                                            f"[图片] {url}" if url else "[图片]"
+                                        )
+                                    elif isinstance(it.get("content"), str):
+                                        parts.append(it["content"])
+                        elif isinstance(c, dict):
+                            if c.get("type") == "text" and isinstance(
+                                c.get("text"), str
+                            ):
+                                parts.append(c["text"])
+                            elif c.get("type") == "image_url":
+                                img = c.get("image_url")
+                                url = (
+                                    img.get("url", "")
+                                    if isinstance(img, dict)
+                                    else (img if isinstance(img, str) else "")
+                                )
+                                parts.append(f"[图片] {url}" if url else "[图片]")
+                            elif isinstance(c.get("content"), str):
+                                parts.append(c["content"])
+                        _post_tmp_user["content"] = "\n".join(
+                            p for p in parts if isinstance(p, str)
+                        ).strip()
             processed_tokens = self.count_messages_tokens(processed_messages)
 
             # 🔁 基于“转写后”重新评估是否需要处理（权威判定）
@@ -4703,6 +4742,8 @@ class Filter:
                 self.stats.final_tokens = processed_tokens
                 self.stats.final_messages = len(processed_messages)
                 body["messages"] = copy.deepcopy(processed_messages)
+                # 确保移除内部字段，兼容 OpenAI API
+                body["messages"] = self.strip_internal_fields(body["messages"])
                 if self.valves.debug_level >= 1:
                     print("无需处理：多模态转写后未超限，直接返回原文（或转写后）")
                 return body
@@ -4788,6 +4829,10 @@ class Filter:
 
         if self.valves.debug_level >= 1:
             print("🏁 Coverage-First处理完成")
+
+        # 出口统一清理内部字段，确保兼容 OpenAI API
+        if isinstance(body.get("messages"), list):
+            body["messages"] = self.strip_internal_fields(body["messages"])
 
         return body
 
