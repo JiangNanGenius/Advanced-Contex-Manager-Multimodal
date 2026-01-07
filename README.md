@@ -1,4 +1,4 @@
-```markdown
+
 # 🚀 Advanced Context Manager — Zero-Loss Coverage-First v2.4.6
 
 > Open WebUI 插件 / Pipeline 组件 · 智能长上下文管理 + 多模态处理 · **零丢失保障（可配置）**
@@ -72,7 +72,6 @@
 
 ## 架构总览
 
-```
 
 原始消息 → MessageOrder 打标 → 多模态预处理 →
 相关度两阶段召回（轻筛 → 向量）→ Coverage 规划（micro + block）→
