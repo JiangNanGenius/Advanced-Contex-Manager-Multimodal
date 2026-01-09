@@ -1,196 +1,260 @@
-# 🚀 高级上下文管理器（多模态 + 上下文最大化）+ 自动记忆（后台） - v2.6.2
+# 🚀 高级上下文管理器（多模态 + 上下文最大化）v2.6.2  
+Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.2
 
-**author**: JiangNanGenius  
-**version**: 2.6.2  
-**license**: MIT  
-**required_open_webui_version**: 0.5.17  
-**Github**: https://github.com/JiangNanGenius  
-
-> 目标：在**不牺牲关键内容**的前提下，尽可能把对话历史塞进模型上下文（Coverage-First / Chunking / Summarization），并支持**多模态图片预处理转写**；同时提供**自动记忆（Auto Memory）**能力，默认后台运行、尽量不打扰前台。
-
----
-
-## ✨ 核心特性（v2.6.2）
-
-### 1) 上下文最大化（Context Maximization）
-- **Coverage-First**：把历史消息按相关度分为高/中/低优先级  
-  - 高/中优先级 → 微摘要（micro summary）  
-  - 低优先级 → 自适应分块摘要（adaptive block summary）  
-  - 极端超限 → 全局块摘要（global block fallback）
-- **不截断保障（Zero-Loss Guarantee 思路）**
-  - 多轮预算调整
-  - 最小摘要预算兜底
-  - 避免“保险截断”导致内容直接被硬裁掉（可配置）
-
-### 2) 智能分片（Chunking）
-- 对超长单条消息进行**段落级智能切块**（可配置 overlap）
-- 为每条消息生成稳定 `_order_id`，切块后生成 `msg_id#chunk_index`
-- 目标：减少“单条消息过大导致整体超限/摘要质量变差”的情况
-
-### 3) 多模态（图片处理 & 兼容非多模态模型）
-- 如果历史消息/当前消息包含图片：  
-  - 多模态模型：可选择保留原图或先转写后摘要  
-  - 非多模态模型：自动执行图片转写（Vision Prompt 模板可配置），避免模型不支持图输入导致失败
-
-### 4) 向量检索 + 重排序（可开关）
-- 支持对历史消息做 embedding，相似度召回
-- 支持 rerank（重排序）进一步筛选高价值内容
-- 内置 embedding cache（按 content_key 缓存），减少重复请求
-
-### 5) 自动记忆（Auto Memory）
-- 自动从最近对话中提取“适合长期记住”的事实/偏好/约束
-- 支持 **强制记忆前缀**：如 `记住:` / `remember:` 命中则直接写入，不走 LLM 判断
-- 对 OpenWebUI Memory 常见 **404 “No memories found”** 做了兼容：表示“当前没有记忆”，不是功能坏了
+**作者 / Author**: JiangNanGenius  
+**版本 / Version**: 2.6.2  
+**License**: MIT  
+**Open WebUI 最低版本 / Required Open WebUI Version**: 0.5.17  
+**GitHub**: https://github.com/JiangNanGenius  
 
 ---
 
-## ✅ 适用场景
-- 对话变长 → 模型开始丢上下文 / 答非所问
-- 有图片（截图、日志、配置）→ 想自动转写并参与检索/摘要
-- 想要“自动记忆”用户偏好/长期项目，但不想每次手动维护
-- 使用多个模型（GPT/Claude/Qwen/GLM/豆包/文心等）希望自动适配上下文策略
+## 中文说明（ZH）
+
+### 1) 这是什么？
+这是一个用于 **Open WebUI Filter** 的高级上下文管理器，目标是：  
+- 在**上下文窗口有限**时，尽量“多保留、多覆盖、少丢失”历史内容  
+- 支持**多模态**（图片）预处理：图片转写/描述 → 变成可检索可总结的文本  
+- 内置 **Auto Memory 自动记忆**：后台运行、可不在前台显示状态
+
+适用于：长对话、复杂技术排障、代码/配置密集型对话、多轮上下文依赖强的场景。
 
 ---
 
-## 📦 依赖与要求
+### 2) 核心能力
+#### ✅ 上下文最大化（Coverage-First）
+- **Coverage 分档**：高/中/低权重消息  
+- **微摘要 + 块摘要**：按预算为每条消息/消息块生成摘要，尽量覆盖全部要点  
+- **自适应分块**：根据原文 token、内容连续性、角色切换、分数波动动态分块  
+- **升级策略**：用“升级池”把高价值摘要恢复成原文（更接近“不截断”）  
+- **不截断保障（Zero-Loss Guarantee）**：通过预算调整/兜底策略减少硬截断风险
 
-### Open WebUI
-- `>= 0.5.17`
+#### ✅ 多模态（图片）处理
+- 检测消息中图片（支持 URL / data:base64）  
+- 可选：在多模态模型支持时 **保留原图**，否则先做 **Vision 转写** 再进入摘要/检索  
+- 图片 URL 有严格校验与清洗，避免异常输入导致流程崩溃
 
-### Python 依赖（可选但建议）
-- `openai`（OpenAI-compatible API，代码使用 `AsyncOpenAI`）
-- `tiktoken`（更准 token 估算；缺失会降级为粗略估算）
-- `httpx`（如你扩展网络调用）
+#### ✅ 记忆系统（Auto Memory，后台）
+- 自动检索相关记忆 → 让 LLM 决定 add/update/delete  
+- 强制写入前缀：`记住:` / `remember:`（命中则跳过 LLM 判断，直接写入）  
+- 输出严格 JSON Schema，包含 actions 与 reason，便于排障  
+- 兼容 Open WebUI 常见行为：**用户无记忆时 query 可能 404**（视为正常）
 
-> 没装 `tiktoken` 不会报错，只是 token 计算会更粗糙（按字符/4估算）。
-
----
-
-## 🛠️ 安装方式
-
-> 你只要把这个 `.py` 放到 **OpenWebUI 能加载 Filter 的目录**即可（常见是 `open_webui/filters/` 一类路径），然后重启。
-
-### 方式 A：Docker（推荐）
-1. 找到容器内 Open WebUI 后端代码目录（常见 `/app/backend/open_webui/`）
-2. 把本文件保存为例如：`advanced_context_manager_v262.py`
-3. 挂载到容器内 filters 目录（示例）：
-   ```bash
-   -v ./filters:/app/backend/open_webui/filters
-   ```
-4. 重启容器
-
-不知道目录？进容器执行：
-```bash
-find /app -maxdepth 4 -type d -name "filters"
-```
-
-### 方式 B：非 Docker / 源码部署
-1. 把文件复制到 Open WebUI 后端的 filters 目录
-2. 重启后端服务
+#### ✅ 性能与稳定性
+- EmbeddingCache：向量缓存（按 content_key 复用）  
+- 并发控制：Semaphore 限制最大并发请求  
+- 安全 API 调用：失败重试、超时、降级兜底  
+- MessageOrder：稳定消息 ID、稳定顺序，降低“乱序/映射丢失”风险  
+- 统计信息：处理耗时、命中率、摘要次数、fallback 次数、覆盖率等
 
 ---
 
-## ⚙️ 配置说明（Valves）
+### 3) 运行依赖
+- Open WebUI：>= **0.5.17**
+- Python 依赖（按需）：
+  - `openai`（AsyncOpenAI）✅（你代码里通过 OPENAI_AVAILABLE 控制）
+  - `httpx`（可选）
+  - `tiktoken`（可选，用于更准 token 估算；没有则退化为字符估算）
+  
+> 如果日志提示 `OPENAI_AVAILABLE=False`，说明没有安装 openai 包或导入失败。
 
-实际使用建议先只动“最影响效果”的。
+---
 
-### 1) 必填：API 配置
-- `api_base`：OpenAI-compatible base url
-- `api_key`：你的 key（必填）
+### 4) 安装方式（常见做法）
+> 不同 Open WebUI 部署方式路径略有差异，下面给最常见的两种。
 
-### 2) 模型配置
-- `multimodal_model`：多模态模型（用于图片转写/多模态摘要）
-- `text_model`：文本模型（用于摘要、关键词、检测等）
-- `memory_model`：自动记忆模型
-- `text_vector_model`：文本向量模型
-- `multimodal_vector_model`：多模态向量模型
+#### A. 通过 Open WebUI 后台（如果你的版本支持 Filter/Plugin 粘贴）
+1. 进入 Admin / 管理后台  
+2. 找到 Filters / 自定义过滤器（或类似入口）  
+3. 新建 / 上传该脚本  
+4. 保存并重启相关服务（如需要）
 
-### 3) 前台安静运行
-- `suppress_frontend_when_idle = true`
-- `show_frontend_progress = false`
-- `enable_detailed_progress = false`
+#### B. Docker / 本地挂载（更通用）
+1. 将脚本保存为一个 `.py` 文件（例如：`advanced_context_manager_v2_6_2.py`）  
+2. 放到 Open WebUI 后端可加载 Filters 的目录（示例：`/app/backend/open_webui/filters/` 或你的自定义 filters 目录）  
+3. 重启容器 / 服务
 
-### 4) 上下文最大化策略开关
-- `enable_processing`
-- `enable_context_maximization`
-- `enable_coverage_first`
-- `enable_zero_loss_guarantee`
+> 如果你告诉我你是 Docker 版还是源码版，以及容器内 Open WebUI 后端目录结构，我可以把挂载路径写成“完全可复制”的命令。
 
-### 5) 性能与并发
-- `max_concurrent_requests`
-- `request_timeout`
-- `enable_embedding_cache` + `cache_max_size`
+---
 
-### 6) 自动记忆
-- `enable_auto_memory = true`
-- `memory_force_add_prefixes = "记住:;remember:"`
-- `memory_related_memories_n`
+### 5) 快速配置（Valves 重点项）
+下面是你最常需要改的几类配置（都在 `Filter.Valves`）：
+
+#### 5.1 API 与模型
+- `api_base`：OpenAI-compatible Base URL（例如火山/代理/自建网关）
+- `api_key`：密钥
+- `text_model`：文本摘要/检索相关调用
+- `multimodal_model`：图片转写/多模态摘要
+- `memory_model`：记忆决策模型
+- `text_vector_model` / `multimodal_vector_model`：向量模型
+
+#### 5.2 Token 与预算策略
+- `default_token_limit` / `token_safety_ratio` / `target_window_usage`
+- `response_buffer_ratio` / `response_buffer_min/max`
+- `max_window_utilization` / `min_preserve_ratio`
+- `enable_zero_loss_guarantee` / `max_budget_adjustment_rounds`
+
+#### 5.3 Coverage 相关
+- `coverage_high_score_threshold` / `coverage_mid_score_threshold`
+- `coverage_high_summary_tokens` / `coverage_mid_summary_tokens`
+- `coverage_block_summary_tokens`
+- `raw_block_target` / `max_blocks` / `upgrade_min_pct`
+
+#### 5.4 多模态策略
+- `enable_multimodal`
+- `preserve_images_in_multimodal`
+- `always_process_images_before_summary`
+- `vision_prompt_template` / `vision_max_tokens`
+
+#### 5.5 Auto Memory
+- `enable_auto_memory`
 - `memory_messages_to_consider`
+- `memory_related_memories_n`
+- `memory_force_add_prefixes`（默认：`记住:;remember:`）
+- `override_memory_context`
 
 ---
 
-## ✅ 最小可用配置范例
+### 6) 使用说明
+- 正常情况下无需手动触发：当检测到  
+  - token 超限（历史消息太长），或  
+  - 当前消息包含图片但模型不支持多模态  
+  就会进入处理流程：分片 → 检索/评分 → Coverage 计划 → 摘要生成 → 输出组装。
 
-```python
-api_base = "https://your-openai-compatible-endpoint/v1"
-api_key  = "YOUR_KEY"
-
-text_model = "your-text-model"
-multimodal_model = "your-vision-model"
-memory_model = "your-text-model"
-
-text_vector_model = "your-embedding-model"
-multimodal_vector_model = "your-vision-embedding-model"
-```
+- Auto Memory 默认后台运行：  
+  - 用户最新消息命中 `记住:` 前缀时会立刻写入记忆  
+  - 否则会检索相关记忆 → 让 LLM 决定是否 add/update/delete
 
 ---
 
-## 🧠 工作原理（简化流程）
+### 7) 排障建议（高频问题）
+1) **“No Function class found in the module”**  
+- 确认文件里顶层类名为 `Filter`（你这里是 `class Filter:` ✅）  
+- 确认 Open WebUI 对 Filter 的加载规则：有些版本要求固定导出结构/目录位置  
+- 确认脚本无语法错误（尤其是复制粘贴截断）
 
-1. 识别模型窗口（ModelMatcher）+ token 估算（TokenCalculator）  
-2. 拆分当前消息与历史消息，保护当前消息  
-3. 判断是否需要处理（超限 / 图片不兼容）  
-4. 大消息切块（MessageChunker）  
-5. 召回与相关度（embedding + rerank 可选）  
-6. Coverage 规划（高/中微摘要，低分块摘要，超限兜底）  
-7. 并发生成摘要并组装输出  
-8. Auto Memory 独立流程（无记忆 404 视为正常）
+2) **记忆查询 404**  
+- 代码已按“用户无记忆时返回 404”为正常处理（会日志提示但不中断）
 
----
+3) **LLM 返回非 JSON 导致记忆解析失败**  
+- 你代码里已经做了 code fence 清理、JSON 截取、以及 “no action” 文本降级  
+- 若仍失败：把 `debug_level` 提升到 2 或 3，查看 raw preview
 
-## 🧯 常见问题
-
-### Memory 404：`No memories found for user`
-✅ 正常，表示“当前没有任何可检索记忆”。
-
-### Auto Memory actions=0（没写进去）
-检查：
-- `enable_auto_memory = true`
-- `api_key/api_base` 是否可用
-- 内容是否适合长期记忆（偏好/长期项目/固定约束）
-
-强制写入：直接发：
-- `记住: ...`
-- `remember: ...`
-
-### token 估算不准
-建议安装 `tiktoken`。
-
-### 太慢/请求太多
-降低：
-- `vector_top_k`
-- `max_concurrent_requests`
-- 关闭 `enable_reranking`
-- 打开 `enable_embedding_cache`
+4) **处理太慢 / API 调用太多**  
+- 降低 `vector_top_k`、`rerank_top_k`  
+- 降低 `max_concurrent_requests`（避免把网关打爆）  
+- 调高相似度阈值：`text_similarity_threshold` / `multimodal_similarity_threshold`
 
 ---
 
-## 🔒 安全建议
-- 不要把 `api_key` 提交到公开仓库
-- 建议用环境变量或 OpenWebUI 的 Secret/配置面板注入
-- 若使用代理网关，建议加鉴权/限流
+### 8) License
+MIT License. 详见项目 License 文件或仓库说明。
 
 ---
 
-## 📄 License
-MIT
+## English (EN)
+
+### 1) What is this?
+This is an **Open WebUI Filter** that maximizes useful context under limited context windows:
+- Preserve and cover as much conversation history as possible with **Coverage-First planning**
+- Support **multimodal (image) preprocessing** by transcribing/describing images into searchable text
+- Run **Auto Memory** in the background (optionally silent in the frontend)
+
+Best for long technical chats, code/config heavy sessions, and multi-turn reasoning.
+
+---
+
+### 2) Key Features
+#### ✅ Context Window Maximization (Coverage-First)
+- Score history messages and classify into high/mid/low priority
+- Generate **micro-summaries** (per message) and **block summaries** (per adaptive block)
+- Adaptive blocking by token size, continuity, role boundaries, and score changes
+- Upgrade strategy: reserve an “upgrade pool” to restore high-value content back to raw text
+- **Zero-Loss Guarantee** style budgeting to reduce hard truncation risk
+
+#### ✅ Multimodal Support
+- Detect images in message content (URL or base64 `data:`)
+- Optionally keep original images for multimodal-capable models, otherwise do vision-to-text first
+- Strict URL validation and sanitization for robustness
+
+#### ✅ Auto Memory (Background)
+- Retrieve related memories → ask the LLM to add/update/delete
+- Forced prefix write: `记住:` / `remember:` (bypass LLM decision, directly add memory)
+- Strict JSON schema output with `actions` + `reason` for debugging
+- Compatible with Open WebUI behavior where querying memories may return **404 if none exist**
+
+#### ✅ Performance & Stability
+- EmbeddingCache for reusing embeddings
+- Concurrency control via semaphore
+- Safe API calls with retry/timeout and fallbacks
+- Stable message ordering/IDs to avoid mapping loss
+- Detailed processing stats (coverage, cache hits, requests, fallbacks, etc.)
+
+---
+
+### 3) Requirements
+- Open WebUI: **>= 0.5.17**
+- Optional Python packages:
+  - `openai` (AsyncOpenAI)
+  - `httpx`
+  - `tiktoken` (better token estimation; falls back if missing)
+
+---
+
+### 4) Installation (Common Approaches)
+#### A) Via Open WebUI Admin UI (if supported)
+1. Open Admin panel  
+2. Go to Filters / Custom Filters  
+3. Create / upload this script  
+4. Save and restart if needed
+
+#### B) Docker / Local Mount
+1. Save the script as a `.py` file (e.g. `advanced_context_manager_v2_6_2.py`)  
+2. Put it into the backend filters directory used by your deployment  
+3. Restart the service/container
+
+> If you tell me your deployment type (Docker vs source) and backend directory layout, I can provide exact copy-paste mount commands.
+
+---
+
+### 5) Configuration (Valves Highlights)
+- API & models: `api_base`, `api_key`, `text_model`, `multimodal_model`, `memory_model`, vector models
+- Token budgeting: `default_token_limit`, `token_safety_ratio`, `target_window_usage`, response buffer
+- Coverage planning: thresholds, per-summary budgets, block sizing, upgrade pool
+- Multimodal: preserve images vs vision preprocessing
+- Auto Memory: messages to consider, related memories k, forced prefixes, override memory context
+
+---
+
+### 6) How it works
+The filter runs automatically when:
+- conversation history exceeds the target token budget, or
+- images appear but the selected model is not multimodal
+
+Pipeline (simplified):
+chunking → scoring/retrieval → coverage planning → summary generation → guarded assembly → output
+
+Auto Memory runs in the background:
+forced-prefix add OR (retrieve → LLM action plan → apply).
+
+---
+
+### 7) Troubleshooting
+- “No Function class found…”: ensure top-level class is `Filter` and the file is fully copied (no truncation)
+- Memory query 404: treated as normal when no memories exist
+- Non-JSON LLM output: the code already strips fences and extracts JSON; increase `debug_level` for raw preview
+- Too slow: reduce `vector_top_k` / rerank top-k, lower concurrency, increase similarity thresholds
+
+---
+
+## Changelog (简要)
+- v2.6.2: 稳定消息 ID / 更强的覆盖摘要与预算策略 / Auto Memory 后台机制增强 / 缓存与并发稳定性提升  
+- v2.6.x: 多模态预处理与兜底策略强化、统计与日志更完整
+
+---
+
+## Credits
+JiangNanGenius and contributors.
+
+---
