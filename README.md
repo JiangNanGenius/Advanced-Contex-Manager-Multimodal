@@ -114,6 +114,16 @@ Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.2
 - `memory_force_add_prefixes`（默认：`记住:;remember:`）
 - `override_memory_context`
 
+#### 5.6 模型能力识别与兜底（当前实现）
+- 先走规则识别（`ModelMatcher.match_model`，正则匹配常见家族）
+- 识别失败时：使用默认能力参数（`200k` 上下文、文本模型、默认图片 token 预算）并输出提示
+- 运行时错误学习：从 API 报错中提取能力信号（`limit` / `multimodal` / `image_tokens`）
+  - 先做正则抽取（中英文错误）
+  - 再用文本模型做结构化解析（JSON）
+- 学到的能力会覆盖本次会话内对应模型的初始识别结果（`runtime override`）
+
+> 说明：当前版本已移除“大型静态精确模型字典”，改为“规则识别 + 失败默认 + 错误学习覆盖”。
+
 ---
 
 ### 6) 使用说明
@@ -224,6 +234,17 @@ Best for long technical chats, code/config heavy sessions, and multi-turn reason
 - Coverage planning: thresholds, per-summary budgets, block sizing, upgrade pool
 - Multimodal: preserve images vs vision preprocessing
 - Auto Memory: messages to consider, related memories k, forced prefixes, override memory context
+
+#### 5.1 Model capability handling (current)
+- First-pass rule-based recognition (`ModelMatcher.match_model`) using regex family patterns
+- On recognition miss: fallback to safe defaults (200k context, text-mode defaults) and emit a hint
+- Runtime learning from API errors (`limit` / `multimodal` / `image_tokens`):
+  - regex extraction (CN/EN error texts)
+  - text-model JSON extraction
+- Learned signals are applied as runtime overrides for the same model key in-session
+
+> Note: the large static exact model dictionary has been removed in favor of
+> “rule-based recognition + default fallback + error-driven runtime learning”.
 
 ---
 

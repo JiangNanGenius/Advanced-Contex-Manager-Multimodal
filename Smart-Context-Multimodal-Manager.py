@@ -645,327 +645,72 @@ class ModelMatcher:
     """智能模型匹配器"""
 
     def __init__(self):
-        self.exact_matches = {
-            # OpenAI / GPT 家族
-            "gpt-5": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 2000,
-            },
-            "gpt-5-mini": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1800,
-            },
-            "gpt-5-nano": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1600,
-            },
-            "gpt-4o": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            "gpt-4o-mini": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1200,
-            },
-            "gpt-4-turbo": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            "gpt-4-vision-preview": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            "gpt-4": {
-                "family": "gpt",
-                "multimodal": False,
-                "limit": 8192,
-                "image_tokens": 0,
-            },
-            "gpt-3.5-turbo": {
-                "family": "gpt",
-                "multimodal": False,
-                "limit": 16385,
-                "image_tokens": 0,
-            },
-            # Anthropic / Claude 家族
-            "claude-4.1": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            "claude-4": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            "claude-3-5-sonnet": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            "claude-3-opus": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            "claude-3-haiku": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 800,
-            },
-            # ByteDance / Doubao 家族
-            "doubao-1.5-vision-pro": {
-                "family": "doubao",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            "doubao-1.5-vision-lite": {
-                "family": "doubao",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1200,
-            },
-            "doubao-1.5-thinking-pro": {
-                "family": "doubao",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "doubao-seed-1-6-250615": {
-                "family": "doubao",
-                "multimodal": False,
-                "limit": 256000,
-                "image_tokens": 1000,
-            },
-            "doubao-seed-1-6-vision-250815": {
-                "family": "doubao",
-                "multimodal": True,
-                "limit": 2560000,
-                "image_tokens": 1000,
-            },
-            "doubao-1-5-pro-256k": {
-                "family": "doubao",
-                "multimodal": False,
-                "limit": 200000,
-                "image_tokens": 0,
-            },
-            # Google / Gemini
-            "gemini-pro": {
-                "family": "gemini",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "gemini-pro-vision": {
-                "family": "gemini",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 800,
-            },
-            # Alibaba / Qwen
-            "qwen-vl": {
-                "family": "qwen",
-                "multimodal": True,
-                "limit": 32000,
-                "image_tokens": 1000,
-            },
-            "qwen3-max": {
-                "family": "qwen",
-                "multimodal": False,
-                "limit": 256000,
-                "image_tokens": 0,
-            },
-            # Zhipu / GLM
-            "glm-4.5": {
-                "family": "glm",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "glm-4.6": {
-                "family": "glm",
-                "multimodal": False,
-                "limit": 198000,
-                "image_tokens": 0,
-            },
-            # Tencent / Hunyuan
-            "hunyuan-large": {
-                "family": "hunyuan",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "hunyuan-vision": {
-                "family": "hunyuan",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 800,
-            },
-            # Moonshot / Kimi
-            "kimi-k2-instruct": {
-                "family": "kimi",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "kimi-k2-thinking": {
-                "family": "kimi",
-                "multimodal": False,
-                "limit": 256000,
-                "image_tokens": 0,
-            },
-            # Baidu / ERNIE
-            "ernie-4.0": {
-                "family": "ernie",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "ernie-4.5": {
-                "family": "ernie",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            # DeepSeek
-            "deepseek-chat": {
-                "family": "deepseek",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "deepseek-reasoner": {
-                "family": "deepseek",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-        }
+        self.default_limit = 200000
+        self.default_image_tokens = 1500
 
-        self.fuzzy_patterns = [
-            {
-                "pattern": r"gpt-5.*",
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 2000,
-            },
-            {
-                "pattern": r"gpt-4o.*",
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            {
-                "pattern": r"gpt-4.*",
-                "family": "gpt",
-                "multimodal": False,
-                "limit": 8192,
-                "image_tokens": 0,
-            },
-            {
-                "pattern": r"claude-4.*",
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            {
-                "pattern": r"claude-3.*",
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            {
-                "pattern": r"doubao.*vision.*",
-                "family": "doubao",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            {
-                "pattern": r"doubao.*",
-                "family": "doubao",
-                "multimodal": False,
-                "limit": 50000,
-                "image_tokens": 0,
-            },
-            {
-                "pattern": r"gemini.*vision.*",
-                "family": "gemini",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 800,
-            },
-            {
-                "pattern": r"qwen.*vl.*",
-                "family": "qwen",
-                "multimodal": True,
-                "limit": 32000,
-                "image_tokens": 1000,
-            },
-        ]
+    def _build_model_info(
+        self,
+        family: str,
+        multimodal: bool,
+        limit: int,
+        image_tokens: int,
+        match_type: str,
+        matched_pattern: Optional[str] = None,
+        hint: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "family": family,
+            "multimodal": multimodal,
+            "limit": limit,
+            "image_tokens": image_tokens,
+            "match_type": match_type,
+        }
+        if matched_pattern:
+            result["matched_pattern"] = matched_pattern
+        if hint:
+            result["hint"] = hint
+        return result
 
     def match_model(self, model_name: str) -> Dict[str, Any]:
         """智能匹配模型信息"""
         if not model_name:
-            return {
-                "family": "unknown",
-                "multimodal": False,
-                "limit": 200000,
-                "image_tokens": 1500,
-            }
+            return self._build_model_info(
+                family="unknown",
+                multimodal=False,
+                limit=self.default_limit,
+                image_tokens=self.default_image_tokens,
+                match_type="default",
+            )
 
         model_lower = model_name.lower().strip()
 
-        # 精确匹配
-        for exact_name, info in self.exact_matches.items():
-            if exact_name.lower() == model_lower:
-                return {**info, "matched_name": exact_name, "match_type": "exact"}
+        if re.match(r"gpt-5.*", model_lower):
+            return self._build_model_info("gpt", True, 200000, 2000, "fuzzy", "gpt-5.*")
+        if re.match(r"gpt-4o.*", model_lower):
+            return self._build_model_info("gpt", True, 128000, 1500, "fuzzy", "gpt-4o.*")
+        if re.match(r"gpt-4.*", model_lower):
+            return self._build_model_info("gpt", False, 8192, 0, "fuzzy", "gpt-4.*")
+        if re.match(r"claude-4.*", model_lower):
+            return self._build_model_info("claude", True, 200000, 1000, "fuzzy", "claude-4.*")
+        if re.match(r"claude-3.*", model_lower):
+            return self._build_model_info("claude", True, 200000, 1000, "fuzzy", "claude-3.*")
+        if re.match(r"doubao.*vision.*", model_lower):
+            return self._build_model_info("doubao", True, 128000, 1500, "fuzzy", "doubao.*vision.*")
+        if re.match(r"doubao.*", model_lower):
+            return self._build_model_info("doubao", False, 50000, 0, "fuzzy", "doubao.*")
+        if re.match(r"gemini.*vision.*", model_lower):
+            return self._build_model_info("gemini", True, 128000, 800, "fuzzy", "gemini.*vision.*")
+        if re.match(r"qwen.*vl.*", model_lower):
+            return self._build_model_info("qwen", True, 32000, 1000, "fuzzy", "qwen.*vl.*")
 
-        # 模糊匹配
-        for pattern_info in self.fuzzy_patterns:
-            pattern = pattern_info["pattern"]
-            if re.match(pattern, model_lower):
-                return {
-                    "family": pattern_info["family"],
-                    "multimodal": pattern_info["multimodal"],
-                    "limit": pattern_info["limit"],
-                    "image_tokens": pattern_info["image_tokens"],
-                    "matched_pattern": pattern,
-                    "match_type": "fuzzy",
-                }
-
-        # 默认匹配
-        return {
-            "family": "unknown",
-            "multimodal": False,
-            "limit": 200000,
-            "image_tokens": 1500,
-            "match_type": "default",
-        }
+        return self._build_model_info(
+            family="unknown",
+            multimodal=False,
+            limit=self.default_limit,
+            image_tokens=self.default_image_tokens,
+            match_type="default",
+            hint=f"未识别模型 '{model_name}'，已使用默认参数（200k / 文本模型）。",
+        )
 
 
 class TokenCalculator:
@@ -2749,18 +2494,23 @@ class Filter:
         multimodal_status = "多模态" if model_info["multimodal"] else "文本"
         family_name = model_info["family"].upper()
         tokens_display = f"{model_info['limit']:,}tokens"
-        match_type_display = {
-            "exact": "精确",
-            "fuzzy": "模糊",
-            "default": "默认",
-            "runtime": "错误学习",
-        }[model_info["match_type"]]
+        match_type = model_info.get("match_type")
+        if match_type == "exact":
+            match_type_display = "精确"
+        elif match_type == "fuzzy":
+            match_type_display = "模糊"
+        elif match_type == "runtime":
+            match_type_display = "错误学习"
+        else:
+            match_type_display = "默认"
 
         print(f"🎯 模型识别: {model_name}")
         print(f"   ├─ 系列: {family_name}")
         print(f"   ├─ 类型: {multimodal_status}")
         print(f"   ├─ 限制: {tokens_display}")
         print(f"   └─ 匹配: {match_type_display}匹配")
+        if model_info.get("hint"):
+            print(f"   ⚠️ 提示: {model_info['hint']}")
 
         if model_info.get("special") == "thinking":
             print(f"   💭 特殊: Thinking模型")
