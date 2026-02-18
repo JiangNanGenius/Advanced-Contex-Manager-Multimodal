@@ -1967,6 +1967,7 @@ class Filter:
         self.current_processing_id = None
         self.current_user_message = None
         self.current_model_info = None
+        self.model_runtime_overrides: Dict[str, Dict[str, Any]] = {}
 
         # Auto Memory相关
         self.current_user_obj = None
@@ -1984,6 +1985,168 @@ class Filter:
                 for keyword in self.valves.high_priority_content.split(",")
                 if keyword.strip()
             }
+
+    def _normalize_model_name(self, model_name: str) -> str:
+        """标准化模型名，用于运行时能力缓存"""
+        return (model_name or "").strip().lower()
+
+    def _extract_error_signals_regex(self, text: str) -> Dict[str, Any]:
+        """从错误文本中提取模型能力信号（正则兜底）"""
+        if not text:
+            return {}
+
+        lowered = text.lower()
+        signals: Dict[str, Any] = {}
+
+        token_patterns = [
+            r"maximum context length is\s*(\d+)",
+            r"model(?:'s)? maximum context length is\s*(\d+)",
+            r"max(?:imum)?(?:\s+input)?\s+tokens?\s*(?:is|are|:)\s*(\d+)",
+            r"最大(?:上下文)?(?:长度|token(?:数)?)\s*(?:为|是|:)\s*(\d+)",
+        ]
+        for pattern in token_patterns:
+            match = re.search(pattern, lowered, flags=re.IGNORECASE)
+            if match:
+                try:
+                    parsed_limit = int(match.group(1))
+                    if parsed_limit > 0:
+                        signals["limit"] = parsed_limit
+                        break
+                except Exception:
+                    continue
+
+        multimodal_unsupported_patterns = [
+            r"does not support (?:image|vision|multimodal)",
+            r"image(?:_url)?(?: input)? is not supported",
+            r"vision is not supported",
+            r"only supports text",
+            r"不支持(?:图片|图像|视觉|多模态)",
+            r"仅支持文本",
+        ]
+        if any(
+            re.search(pattern, lowered, flags=re.IGNORECASE)
+            for pattern in multimodal_unsupported_patterns
+        ):
+            signals["multimodal"] = False
+            signals["image_tokens"] = 0
+
+        return signals
+
+    def _extract_json_object(self, text: str) -> Optional[dict]:
+        """从文本中提取JSON对象"""
+        if not text:
+            return None
+        text = text.strip()
+        try:
+            parsed = json.loads(text)
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            pass
+
+        match = re.search(r"\{[\s\S]*\}", text)
+        if not match:
+            return None
+        try:
+            parsed = json.loads(match.group(0))
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            return None
+
+    async def _extract_error_signals_with_text_model(
+        self, error_text: str
+    ) -> Dict[str, Any]:
+        """使用文本模型解析错误，提取模型能力信号"""
+        if not error_text:
+            return {}
+
+        client = self.get_api_client()
+        if not client:
+            return {}
+
+        system_prompt = (
+            "你是API错误解析器。请从错误文本中识别模型能力信号，并严格输出JSON。"
+            "若无法判断某字段，填 null。不要输出额外文本。"
+        )
+        user_prompt = (
+            "错误文本：\n"
+            f"{error_text}\n\n"
+            "请输出："
+            '{"limit": <int|null>, "multimodal": <true|false|null>, "image_tokens": <int|null>}'
+        )
+
+        try:
+            response = await client.chat.completions.create(
+                model=self.valves.text_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                max_tokens=120,
+                temperature=0,
+                timeout=self.valves.request_timeout,
+            )
+        except Exception:
+            return {}
+
+        if not response or not response.choices:
+            return {}
+
+        content = (response.choices[0].message.content or "").strip()
+        parsed = self._extract_json_object(content)
+        if not parsed:
+            return {}
+
+        signals: Dict[str, Any] = {}
+
+        limit_val = parsed.get("limit")
+        if isinstance(limit_val, (int, float)) and int(limit_val) > 0:
+            signals["limit"] = int(limit_val)
+        elif isinstance(limit_val, str) and limit_val.strip().isdigit():
+            signals["limit"] = int(limit_val.strip())
+
+        multimodal_val = parsed.get("multimodal")
+        if isinstance(multimodal_val, bool):
+            signals["multimodal"] = multimodal_val
+
+        image_tokens_val = parsed.get("image_tokens")
+        if isinstance(image_tokens_val, (int, float)) and int(image_tokens_val) >= 0:
+            signals["image_tokens"] = int(image_tokens_val)
+        elif isinstance(image_tokens_val, str) and image_tokens_val.strip().isdigit():
+            signals["image_tokens"] = int(image_tokens_val.strip())
+
+        if signals.get("multimodal") is False and "image_tokens" not in signals:
+            signals["image_tokens"] = 0
+
+        return signals
+
+    async def learn_model_capability_from_errors(
+        self,
+        model_name: str,
+        error_text: str = "",
+    ):
+        """从请求返回错误中学习模型能力，覆盖静态字典"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key or not error_text:
+            return
+
+        regex_signals = self._extract_error_signals_regex(error_text)
+        llm_signals = await self._extract_error_signals_with_text_model(error_text)
+
+        merged_signals: Dict[str, Any] = {}
+        merged_signals.update(regex_signals)
+        merged_signals.update(llm_signals)
+
+        if not merged_signals:
+            return
+
+        existing = self.model_runtime_overrides.get(model_key, {})
+        existing.update(merged_signals)
+        self.model_runtime_overrides[model_key] = existing
+        self.debug_log(
+            1,
+            f"已从错误信息学习模型能力: {model_name} -> {existing}",
+            "🧠",
+        )
 
     def reset_processing_state(self):
         """重置处理状态"""
@@ -2574,14 +2737,24 @@ class Filter:
     def analyze_model(self, model_name: str) -> Dict[str, Any]:
         """分析模型信息"""
         model_info = self.model_matcher.match_model(model_name)
+
+        model_key = self._normalize_model_name(model_name)
+        runtime_override = self.model_runtime_overrides.get(model_key)
+        if runtime_override:
+            model_info.update(runtime_override)
+            model_info["match_type"] = "runtime"
+
         self.token_calculator.set_model_info(model_info)
 
         multimodal_status = "多模态" if model_info["multimodal"] else "文本"
         family_name = model_info["family"].upper()
         tokens_display = f"{model_info['limit']:,}tokens"
-        match_type_display = {"exact": "精确", "fuzzy": "模糊", "default": "默认"}[
-            model_info["match_type"]
-        ]
+        match_type_display = {
+            "exact": "精确",
+            "fuzzy": "模糊",
+            "default": "默认",
+            "runtime": "错误学习",
+        }[model_info["match_type"]]
 
         print(f"🎯 模型识别: {model_name}")
         print(f"   ├─ 系列: {family_name}")
@@ -2833,6 +3006,17 @@ class Filter:
             except Exception as e:
                 error_msg = str(e)
                 self.stats.api_failures += 1
+
+                # 失败学习：从报错中学习模型能力（token上限/多模态支持）
+                try:
+                    fallback_model = getattr(self, "_current_model_name", "")
+                    await self.learn_model_capability_from_errors(
+                        fallback_model,
+                        error_text=error_msg,
+                    )
+                except Exception:
+                    pass
+
                 if attempt < self.valves.api_error_retry_times:
                     self.debug_log(
                         1,
@@ -4192,6 +4376,9 @@ class Filter:
                 self.stats.image_processing_errors += 1
                 return "图片识别失败：API返回空响应"
         except Exception as e:
+            await self.learn_model_capability_from_errors(
+                self.valves.multimodal_model, error_text=str(e)
+            )
             self.debug_log(1, f"图片识别异常: {str(e)[:100]}", "❌")
             self.stats.image_processing_errors += 1
             return f"图片识别失败：{str(e)[:100]}"
