@@ -1773,6 +1773,25 @@ class Filter:
         limit_val = runtime_override.get("limit")
         return isinstance(limit_val, (int, float)) and int(limit_val) > 0
 
+    def _is_multimodal_refusal_text(self, text: str) -> bool:
+        """判断文本是否在表达“无法处理图片/仅文本能力”"""
+        if not text:
+            return False
+        lowered = str(text).lower()
+        patterns = [
+            r"cannot process images",
+            r"can't process images",
+            r"cannot view images",
+            r"cannot directly display or manipulate images",
+            r"limited to text",
+            r"only (?:supports|support) text",
+            r"i cannot process images",
+            r"无法处理图片",
+            r"不支持(?:图片|图像|视觉|多模态)",
+            r"仅支持文本",
+        ]
+        return any(re.search(p, lowered, flags=re.IGNORECASE) for p in patterns)
+
     async def probe_model_multimodal_support(self, model_name: str) -> Optional[bool]:
         """通过极小测试图主动探测模型是否支持多模态。返回 True/False/None(未知)。"""
         model_key = self._normalize_model_name(model_name)
@@ -1815,18 +1834,7 @@ class Filter:
         if response and response.choices and response.choices[0].message:
             content = str(response.choices[0].message.content or "").lower()
 
-        unsupported_patterns = [
-            r"cannot process images",
-            r"can't process images",
-            r"cannot view images",
-            r"limited to text",
-            r"only (?:supports|support) text",
-            r"i cannot process images",
-            r"不支持(?:图片|图像|视觉|多模态)",
-            r"仅支持文本",
-            r"无法处理图片",
-        ]
-        if any(re.search(p, content, flags=re.IGNORECASE) for p in unsupported_patterns):
+        if self._is_multimodal_refusal_text(content):
             self._mark_model_as_text_only(
                 model_name,
                 "探测响应显示模型不支持图片输入，后续按文本模型处理。",
@@ -5209,5 +5217,27 @@ class Filter:
                     logger=self.logger,
                 )
                 self.memory_log("已启动异步记忆处理", "info")
+
+        # 从模型最终回复中学习“仅文本能力”提示（有些服务不会抛异常，只会文本拒绝图片）
+        try:
+            msgs = body.get("messages", [])
+            last_assistant = None
+            for m in reversed(msgs):
+                if isinstance(m, dict) and m.get("role") == "assistant":
+                    last_assistant = m
+                    break
+            if last_assistant is not None:
+                assistant_text = self.extract_text_from_content(last_assistant.get("content", ""))
+                if self._is_multimodal_refusal_text(assistant_text):
+                    current_model = getattr(self, "_current_model_name", "")
+                    self._mark_model_as_text_only(
+                        current_model,
+                        "模型在回复中声明无法处理图片，已标记为文本模型。",
+                    )
+                    mk = self._normalize_model_name(current_model)
+                    if mk:
+                        self.model_multimodal_probe_results[mk] = False
+        except Exception:
+            pass
 
         return body
