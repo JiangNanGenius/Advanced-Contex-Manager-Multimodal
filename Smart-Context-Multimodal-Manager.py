@@ -1763,6 +1763,15 @@ class Filter:
             existing["hint"] = reason
         self.model_runtime_overrides[model_key] = existing
 
+    def _is_model_token_limit_known(self, model_name: str) -> bool:
+        """仅在已学习到明确上下文窗口时返回True，避免未知模型被提前压缩"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key:
+            return False
+        runtime_override = self.model_runtime_overrides.get(model_key, {})
+        limit_val = runtime_override.get("limit")
+        return isinstance(limit_val, (int, float)) and int(limit_val) > 0
+
     def _extract_error_signals_regex(self, text: str) -> Dict[str, Any]:
         """从错误文本中提取模型能力信号（正则兜底）"""
         if not text:
@@ -2705,7 +2714,8 @@ class Filter:
         """判定是否需要进行处理"""
         current_tokens = self.count_messages_tokens(messages)
         has_images = self.has_images_in_messages(messages)
-        token_overflow = current_tokens > target_tokens
+        token_limit_known = self._is_model_token_limit_known(model_name)
+        token_overflow = token_limit_known and (current_tokens > target_tokens)
         # 多模态不兼容仅在“已知不支持”时触发，未知模型先直通
         multimodal_incompatible = has_images and self._is_model_known_non_multimodal(
             model_name
