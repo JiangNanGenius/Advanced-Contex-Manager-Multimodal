@@ -1806,7 +1806,13 @@ class Filter:
         if not client:
             return None
 
-        tiny_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7ZzQkAAAAASUVORK5CYII="
+        # 使用稍大测试图 + 明确握手口令，减少“图片太小/被忽略”的误判
+        probe_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAK0lEQVR4nO3NQQEAAAQAMPSvIScN8DUBQGfPnj179uzZs2fPnj179uzZQw+fFQE6Y8jvGQAAAABJRU5ErkJggg=="
+        probe_prompt = (
+            "这是多模态能力探测。请只返回一个词："
+            "如果你确实看到了图片并支持图像输入，返回 MM_OK；"
+            "否则返回 MM_NO。不要输出其他内容。"
+        )
         try:
             response = await client.chat.completions.create(
                 model=model_name,
@@ -1814,12 +1820,12 @@ class Filter:
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", "text": "请判断你是否能处理图片，并简短描述这张测试图。"},
-                            {"type": "image_url", "image_url": {"url": tiny_png}},
+                            {"type": "text", "text": probe_prompt},
+                            {"type": "image_url", "image_url": {"url": probe_png}},
                         ],
                     }
                 ],
-                max_tokens=64,
+                max_tokens=16,
                 temperature=0,
                 timeout=self.valves.request_timeout,
             )
@@ -1834,17 +1840,19 @@ class Filter:
         if response and response.choices and response.choices[0].message:
             content = str(response.choices[0].message.content or "").lower()
 
-        if self._is_multimodal_refusal_text(content):
-            self._mark_model_as_text_only(
-                model_name,
-                "探测响应显示模型不支持图片输入，后续按文本模型处理。",
-            )
-            self.model_multimodal_probe_results[model_key] = False
-            return False
+        normalized = re.sub(r"\s+", "", content).upper()
 
-        # 能返回正常文本，且未命中不支持模式，则认为支持多模态
-        self.model_multimodal_probe_results[model_key] = True
-        return True
+        if "MM_OK" in normalized:
+            self.model_multimodal_probe_results[model_key] = True
+            return True
+
+        # 只要不是明确 MM_OK，都按不支持处理（MM_NO/拒绝文案/跑偏回复）
+        self._mark_model_as_text_only(
+            model_name,
+            "探测未确认多模态可用（或明确拒绝图片），后续按文本模型处理。",
+        )
+        self.model_multimodal_probe_results[model_key] = False
+        return False
 
     def _extract_error_signals_regex(self, text: str) -> Dict[str, Any]:
         """从错误文本中提取模型能力信号（正则兜底）"""
