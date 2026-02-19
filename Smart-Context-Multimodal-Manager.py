@@ -1715,6 +1715,7 @@ class Filter:
         self.model_runtime_overrides: Dict[str, Dict[str, Any]] = {}
         self.forced_text_only_models: set[str] = set()
         self.image_description_cache: Dict[str, str] = {}
+        self.model_multimodal_probe_results: Dict[str, bool] = {}
 
         # Auto Memory相关
         self.current_user_obj = None
@@ -1771,6 +1772,71 @@ class Filter:
         runtime_override = self.model_runtime_overrides.get(model_key, {})
         limit_val = runtime_override.get("limit")
         return isinstance(limit_val, (int, float)) and int(limit_val) > 0
+
+    async def probe_model_multimodal_support(self, model_name: str) -> Optional[bool]:
+        """通过极小测试图主动探测模型是否支持多模态。返回 True/False/None(未知)。"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key:
+            return None
+
+        cached = self.model_multimodal_probe_results.get(model_key)
+        if cached is not None:
+            return cached
+
+        client = self.get_api_client()
+        if not client:
+            return None
+
+        tiny_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7ZzQkAAAAASUVORK5CYII="
+        try:
+            response = await client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "请判断你是否能处理图片，并简短描述这张测试图。"},
+                            {"type": "image_url", "image_url": {"url": tiny_png}},
+                        ],
+                    }
+                ],
+                max_tokens=64,
+                temperature=0,
+                timeout=self.valves.request_timeout,
+            )
+        except Exception as e:
+            await self.learn_model_capability_from_errors(model_name, error_text=str(e))
+            if self._is_model_known_non_multimodal(model_name):
+                self.model_multimodal_probe_results[model_key] = False
+                return False
+            return None
+
+        content = ""
+        if response and response.choices and response.choices[0].message:
+            content = str(response.choices[0].message.content or "").lower()
+
+        unsupported_patterns = [
+            r"cannot process images",
+            r"can't process images",
+            r"cannot view images",
+            r"limited to text",
+            r"only (?:supports|support) text",
+            r"i cannot process images",
+            r"不支持(?:图片|图像|视觉|多模态)",
+            r"仅支持文本",
+            r"无法处理图片",
+        ]
+        if any(re.search(p, content, flags=re.IGNORECASE) for p in unsupported_patterns):
+            self._mark_model_as_text_only(
+                model_name,
+                "探测响应显示模型不支持图片输入，后续按文本模型处理。",
+            )
+            self.model_multimodal_probe_results[model_key] = False
+            return False
+
+        # 能返回正常文本，且未命中不支持模式，则认为支持多模态
+        self.model_multimodal_probe_results[model_key] = True
+        return True
 
     def _extract_error_signals_regex(self, text: str) -> Dict[str, Any]:
         """从错误文本中提取模型能力信号（正则兜底）"""
@@ -4339,6 +4405,14 @@ class Filter:
 
         known_non_multimodal = self._is_model_known_non_multimodal(model_name)
         is_multimodal = self.is_multimodal_model(model_name)
+
+        if not known_non_multimodal:
+            probe_result = await self.probe_model_multimodal_support(model_name)
+            if probe_result is False:
+                known_non_multimodal = True
+            elif probe_result is True:
+                is_multimodal = True
+
         self.debug_log(
             1,
             f"模型分析: {model_name} | 多模态支持: {is_multimodal} | 已知不支持: {known_non_multimodal}",
@@ -4346,7 +4420,7 @@ class Filter:
         )
 
         if known_non_multimodal:
-            return "vision_to_text", "模型已知不支持多模态，使用图片描述文本"
+            return "vision_to_text", "模型探测/学习后确认不支持多模态，使用图片描述文本"
 
         if is_multimodal:
             budget_sufficient = self.calculate_multimodal_budget_sufficient(
@@ -4357,7 +4431,7 @@ class Filter:
             else:
                 return "multimodal_rag", "多模态模型，Token预算不足，使用多模态向量RAG"
 
-        return "direct_multimodal", "模型能力未知，先直通等待后续错误学习"
+        return "direct_multimodal", "模型能力未知但探测未判定不支持，先直通"
 
     async def process_multimodal_content(
         self,
