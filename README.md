@@ -1,8 +1,8 @@
-# 🚀 高级上下文管理器（多模态 + 上下文最大化）v2.6.2  
-Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.2
+# 🚀 高级上下文管理器（多模态 + 上下文最大化）v2.6.3  
+Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.3
 
 **作者 / Author**: JiangNanGenius  
-**版本 / Version**: 2.6.2  
+**版本 / Version**: 2.6.3  
 **License**: MIT  
 **Open WebUI 最低版本 / Required Open WebUI Version**: 0.5.17  
 **GitHub**: https://github.com/JiangNanGenius  
@@ -90,7 +90,7 @@ Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.2
 - `text_vector_model` / `multimodal_vector_model`：向量模型
 
 #### 5.2 Token 与预算策略
-- `default_token_limit` / `token_safety_ratio` / `target_window_usage`
+- `default_token_limit` / `max_fallback_token_limit` / `token_safety_ratio` / `target_window_usage`
 - `response_buffer_ratio` / `response_buffer_min/max`
 - `max_window_utilization` / `min_preserve_ratio`
 - `enable_zero_loss_guarantee` / `max_budget_adjustment_rounds`
@@ -113,6 +113,16 @@ Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.2
 - `memory_related_memories_n`
 - `memory_force_add_prefixes`（默认：`记住:;remember:`）
 - `override_memory_context`
+
+#### 5.6 模型能力识别与兜底（当前实现）
+- 先走规则识别（`ModelMatcher.match_model`，正则匹配常见家族）
+- 识别失败时：使用默认能力参数（`200k` 上下文、文本模型、默认图片 token 预算）并输出提示
+- 运行时错误学习：从 API 报错中提取能力信号（`limit` / `multimodal` / `image_tokens`）
+  - 先做正则抽取（中英文错误）
+  - 再用文本模型做结构化解析（JSON）
+- 学到的能力会覆盖本次会话内对应模型的初始识别结果（`runtime override`）
+
+> 说明：当前版本已移除“大型静态精确模型字典”，改为“规则识别 + 失败默认 + 错误学习覆盖”。
 
 ---
 
@@ -220,10 +230,21 @@ Best for long technical chats, code/config heavy sessions, and multi-turn reason
 
 ### 5) Configuration (Valves Highlights)
 - API & models: `api_base`, `api_key`, `text_model`, `multimodal_model`, `memory_model`, vector models
-- Token budgeting: `default_token_limit`, `token_safety_ratio`, `target_window_usage`, response buffer
+- Token budgeting: `default_token_limit`, `max_fallback_token_limit`, `token_safety_ratio`, `target_window_usage`, response buffer
 - Coverage planning: thresholds, per-summary budgets, block sizing, upgrade pool
 - Multimodal: preserve images vs vision preprocessing
 - Auto Memory: messages to consider, related memories k, forced prefixes, override memory context
+
+#### 5.1 Model capability handling (current)
+- First-pass rule-based recognition (`ModelMatcher.match_model`) using regex family patterns
+- On recognition miss: fallback to safe defaults (200k context, text-mode defaults) and emit a hint
+- Runtime learning from API errors (`limit` / `multimodal` / `image_tokens`):
+  - regex extraction (CN/EN error texts)
+  - text-model JSON extraction
+- Learned signals are applied as runtime overrides for the same model key in-session
+
+> Note: the large static exact model dictionary has been removed in favor of
+> “rule-based recognition + default fallback + error-driven runtime learning”.
 
 ---
 
@@ -249,7 +270,7 @@ forced-prefix add OR (retrieve → LLM action plan → apply).
 ---
 
 ## Changelog (简要)
-- v2.6.2: 稳定消息 ID / 更强的覆盖摘要与预算策略 / Auto Memory 后台机制增强 / 缓存与并发稳定性提升  
+- v2.6.3: 稳定消息 ID / 更强的覆盖摘要与预算策略 / Auto Memory 后台机制增强 / 缓存与并发稳定性提升  
 - v2.6.x: 多模态预处理与兜底策略强化、统计与日志更完整
 
 ---

@@ -1,7 +1,7 @@
 """
-title: 🚀 高级上下文管理器（多模态+上下文最大化） - v2.6.2
+title: 🚀 高级上下文管理器（多模态+上下文最大化） - v2.6.3
 author: JiangNanGenius
-version: 2.6.2
+version: 2.6.3
 license: MIT
 required_open_webui_version: 0.5.17
 Github: https://github.com/JiangNanGenius
@@ -645,327 +645,72 @@ class ModelMatcher:
     """智能模型匹配器"""
 
     def __init__(self):
-        self.exact_matches = {
-            # OpenAI / GPT 家族
-            "gpt-5": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 2000,
-            },
-            "gpt-5-mini": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1800,
-            },
-            "gpt-5-nano": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1600,
-            },
-            "gpt-4o": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            "gpt-4o-mini": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1200,
-            },
-            "gpt-4-turbo": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            "gpt-4-vision-preview": {
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            "gpt-4": {
-                "family": "gpt",
-                "multimodal": False,
-                "limit": 8192,
-                "image_tokens": 0,
-            },
-            "gpt-3.5-turbo": {
-                "family": "gpt",
-                "multimodal": False,
-                "limit": 16385,
-                "image_tokens": 0,
-            },
-            # Anthropic / Claude 家族
-            "claude-4.1": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            "claude-4": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            "claude-3-5-sonnet": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            "claude-3-opus": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            "claude-3-haiku": {
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 800,
-            },
-            # ByteDance / Doubao 家族
-            "doubao-1.5-vision-pro": {
-                "family": "doubao",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            "doubao-1.5-vision-lite": {
-                "family": "doubao",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1200,
-            },
-            "doubao-1.5-thinking-pro": {
-                "family": "doubao",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "doubao-seed-1-6-250615": {
-                "family": "doubao",
-                "multimodal": False,
-                "limit": 256000,
-                "image_tokens": 1000,
-            },
-            "doubao-seed-1-6-vision-250815": {
-                "family": "doubao",
-                "multimodal": True,
-                "limit": 2560000,
-                "image_tokens": 1000,
-            },
-            "doubao-1-5-pro-256k": {
-                "family": "doubao",
-                "multimodal": False,
-                "limit": 200000,
-                "image_tokens": 0,
-            },
-            # Google / Gemini
-            "gemini-pro": {
-                "family": "gemini",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "gemini-pro-vision": {
-                "family": "gemini",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 800,
-            },
-            # Alibaba / Qwen
-            "qwen-vl": {
-                "family": "qwen",
-                "multimodal": True,
-                "limit": 32000,
-                "image_tokens": 1000,
-            },
-            "qwen3-max": {
-                "family": "qwen",
-                "multimodal": False,
-                "limit": 256000,
-                "image_tokens": 0,
-            },
-            # Zhipu / GLM
-            "glm-4.5": {
-                "family": "glm",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "glm-4.6": {
-                "family": "glm",
-                "multimodal": False,
-                "limit": 198000,
-                "image_tokens": 0,
-            },
-            # Tencent / Hunyuan
-            "hunyuan-large": {
-                "family": "hunyuan",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "hunyuan-vision": {
-                "family": "hunyuan",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 800,
-            },
-            # Moonshot / Kimi
-            "kimi-k2-instruct": {
-                "family": "kimi",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "kimi-k2-thinking": {
-                "family": "kimi",
-                "multimodal": False,
-                "limit": 256000,
-                "image_tokens": 0,
-            },
-            # Baidu / ERNIE
-            "ernie-4.0": {
-                "family": "ernie",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "ernie-4.5": {
-                "family": "ernie",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            # DeepSeek
-            "deepseek-chat": {
-                "family": "deepseek",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-            "deepseek-reasoner": {
-                "family": "deepseek",
-                "multimodal": False,
-                "limit": 128000,
-                "image_tokens": 0,
-            },
-        }
+        self.default_limit = 200000
+        self.default_image_tokens = 1500
 
-        self.fuzzy_patterns = [
-            {
-                "pattern": r"gpt-5.*",
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 2000,
-            },
-            {
-                "pattern": r"gpt-4o.*",
-                "family": "gpt",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            {
-                "pattern": r"gpt-4.*",
-                "family": "gpt",
-                "multimodal": False,
-                "limit": 8192,
-                "image_tokens": 0,
-            },
-            {
-                "pattern": r"claude-4.*",
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            {
-                "pattern": r"claude-3.*",
-                "family": "claude",
-                "multimodal": True,
-                "limit": 200000,
-                "image_tokens": 1000,
-            },
-            {
-                "pattern": r"doubao.*vision.*",
-                "family": "doubao",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 1500,
-            },
-            {
-                "pattern": r"doubao.*",
-                "family": "doubao",
-                "multimodal": False,
-                "limit": 50000,
-                "image_tokens": 0,
-            },
-            {
-                "pattern": r"gemini.*vision.*",
-                "family": "gemini",
-                "multimodal": True,
-                "limit": 128000,
-                "image_tokens": 800,
-            },
-            {
-                "pattern": r"qwen.*vl.*",
-                "family": "qwen",
-                "multimodal": True,
-                "limit": 32000,
-                "image_tokens": 1000,
-            },
-        ]
+    def _build_model_info(
+        self,
+        family: str,
+        multimodal: bool,
+        limit: int,
+        image_tokens: int,
+        match_type: str,
+        matched_pattern: Optional[str] = None,
+        hint: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "family": family,
+            "multimodal": multimodal,
+            "limit": limit,
+            "image_tokens": image_tokens,
+            "match_type": match_type,
+        }
+        if matched_pattern:
+            result["matched_pattern"] = matched_pattern
+        if hint:
+            result["hint"] = hint
+        return result
 
     def match_model(self, model_name: str) -> Dict[str, Any]:
         """智能匹配模型信息"""
         if not model_name:
-            return {
-                "family": "unknown",
-                "multimodal": False,
-                "limit": 200000,
-                "image_tokens": 1500,
-            }
+            return self._build_model_info(
+                family="unknown",
+                multimodal=False,
+                limit=self.default_limit,
+                image_tokens=self.default_image_tokens,
+                match_type="default",
+            )
 
         model_lower = model_name.lower().strip()
 
-        # 精确匹配
-        for exact_name, info in self.exact_matches.items():
-            if exact_name.lower() == model_lower:
-                return {**info, "matched_name": exact_name, "match_type": "exact"}
+        if re.match(r"gpt-5.*", model_lower):
+            return self._build_model_info("gpt", True, 200000, 2000, "fuzzy", "gpt-5.*")
+        if re.match(r"gpt-4o.*", model_lower):
+            return self._build_model_info("gpt", True, 128000, 1500, "fuzzy", "gpt-4o.*")
+        if re.match(r"gpt-4.*", model_lower):
+            return self._build_model_info("gpt", False, 8192, 0, "fuzzy", "gpt-4.*")
+        if re.match(r"claude-4.*", model_lower):
+            return self._build_model_info("claude", True, 200000, 1000, "fuzzy", "claude-4.*")
+        if re.match(r"claude-3.*", model_lower):
+            return self._build_model_info("claude", True, 200000, 1000, "fuzzy", "claude-3.*")
+        if re.match(r"doubao.*vision.*", model_lower):
+            return self._build_model_info("doubao", True, 128000, 1500, "fuzzy", "doubao.*vision.*")
+        if re.match(r"doubao.*", model_lower):
+            return self._build_model_info("doubao", False, 50000, 0, "fuzzy", "doubao.*")
+        if re.match(r"gemini.*vision.*", model_lower):
+            return self._build_model_info("gemini", True, 128000, 800, "fuzzy", "gemini.*vision.*")
+        if re.match(r"qwen.*vl.*", model_lower):
+            return self._build_model_info("qwen", True, 32000, 1000, "fuzzy", "qwen.*vl.*")
 
-        # 模糊匹配
-        for pattern_info in self.fuzzy_patterns:
-            pattern = pattern_info["pattern"]
-            if re.match(pattern, model_lower):
-                return {
-                    "family": pattern_info["family"],
-                    "multimodal": pattern_info["multimodal"],
-                    "limit": pattern_info["limit"],
-                    "image_tokens": pattern_info["image_tokens"],
-                    "matched_pattern": pattern,
-                    "match_type": "fuzzy",
-                }
-
-        # 默认匹配
-        return {
-            "family": "unknown",
-            "multimodal": False,
-            "limit": 200000,
-            "image_tokens": 1500,
-            "match_type": "default",
-        }
+        return self._build_model_info(
+            family="unknown",
+            multimodal=False,
+            limit=self.default_limit,
+            image_tokens=self.default_image_tokens,
+            match_type="default",
+            hint=f"未识别模型 '{model_name}'，已使用默认参数（200k / 文本模型）。",
+        )
 
 
 class TokenCalculator:
@@ -1777,6 +1522,9 @@ class Filter:
 
         # ========== Token管理 ==========
         default_token_limit: int = Field(default=200000, description="⚖️ 默认token限制")
+        max_fallback_token_limit: int = Field(
+            default=300000, description="🛟 未知模型最大兜底token限制"
+        )
         token_safety_ratio: float = Field(
             default=0.92, description="🛡️ Token安全比例(92%)"
         )
@@ -1968,6 +1716,9 @@ class Filter:
         self.current_user_message = None
         self.current_model_info = None
         self.model_runtime_overrides: Dict[str, Dict[str, Any]] = {}
+        self.forced_text_only_models: set[str] = set()
+        self.image_description_cache: Dict[str, str] = {}
+        self.model_multimodal_probe_results: Dict[str, bool] = {}
 
         # Auto Memory相关
         self.current_user_obj = None
@@ -1989,6 +1740,149 @@ class Filter:
     def _normalize_model_name(self, model_name: str) -> str:
         """标准化模型名，用于运行时能力缓存"""
         return (model_name or "").strip().lower()
+
+    def _is_model_known_non_multimodal(self, model_name: str) -> bool:
+        """仅在“已知不支持多模态”时返回True，避免对未知模型过早转写"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key:
+            return False
+
+        if model_key in self.forced_text_only_models:
+            return True
+
+        runtime_override = self.model_runtime_overrides.get(model_key, {})
+        return runtime_override.get("multimodal") is False
+
+    def _mark_model_as_text_only(self, model_name: str, reason: str = ""):
+        """在发生多模态兼容问题后，将模型标记为文本模型"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key:
+            return
+
+        self.forced_text_only_models.add(model_key)
+        existing = self.model_runtime_overrides.get(model_key, {})
+        existing["multimodal"] = False
+        existing["image_tokens"] = 0
+        if reason:
+            existing["hint"] = reason
+        self.model_runtime_overrides[model_key] = existing
+
+    def _is_model_token_limit_known(self, model_name: str) -> bool:
+        """仅在已学习到明确上下文窗口时返回True：不超限场景不预判上限。"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key:
+            return False
+        runtime_override = self.model_runtime_overrides.get(model_key, {})
+        limit_val = runtime_override.get("limit")
+        return isinstance(limit_val, (int, float)) and int(limit_val) > 0
+
+    def _is_multimodal_refusal_text(self, text: str) -> bool:
+        """判断文本是否在表达“无法处理图片/仅文本能力”"""
+        if not text:
+            return False
+        lowered = str(text).lower()
+        patterns = [
+            r"cannot process images",
+            r"can't process images",
+            r"cannot view images",
+            r"cannot directly display or manipulate images",
+            r"limited to text",
+            r"only (?:supports|support) text",
+            r"i cannot process images",
+            r"无法处理图片",
+            r"不支持(?:图片|图像|视觉|多模态)",
+            r"仅支持文本",
+        ]
+        return any(re.search(p, lowered, flags=re.IGNORECASE) for p in patterns)
+
+    async def probe_model_multimodal_support(self, model_name: str) -> Optional[bool]:
+        """通过极小测试图主动探测模型是否支持多模态。返回 True/False/None(未知)。"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key:
+            return None
+
+        cached = self.model_multimodal_probe_results.get(model_key)
+        if cached is not None:
+            return cached
+
+        client = self.get_api_client()
+        if not client:
+            return None
+
+        # 使用稍大测试图 + 明确握手口令，减少“图片太小/被忽略”的误判
+        probe_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAK0lEQVR4nO3NQQEAAAQAMPSvIScN8DUBQGfPnj179uzZs2fPnj179uzZQw+fFQE6Y8jvGQAAAABJRU5ErkJggg=="
+        probe_prompt = (
+            "这是多模态能力探测。请只返回一个词："
+            "如果你确实看到了图片并支持图像输入，返回 MM_OK；"
+            "否则返回 MM_NO。不要输出其他内容。"
+        )
+        try:
+            response = await client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": probe_prompt},
+                            {"type": "image_url", "image_url": {"url": probe_png}},
+                        ],
+                    }
+                ],
+                max_tokens=16,
+                temperature=0,
+                timeout=self.valves.request_timeout,
+            )
+        except Exception as e:
+            err_text = str(e)
+            await self.learn_model_capability_from_errors(model_name, error_text=err_text)
+
+            # 探测请求本身失败（如 4xx/模型不存在/不接受图片输入）时，优先按不支持处理
+            lowered_err = err_text.lower()
+            probe_hard_fail = any(
+                key in lowered_err
+                for key in [
+                    " 400",
+                    " 404",
+                    "not found",
+                    "invalid",
+                    "unsupported",
+                    "does not support",
+                    "image_url",
+                    "vision",
+                    "multimodal",
+                ]
+            )
+            if probe_hard_fail or self._is_model_known_non_multimodal(model_name):
+                self._mark_model_as_text_only(
+                    model_name,
+                    "多模态探测请求失败，已按文本模型兜底处理。",
+                )
+                self.model_multimodal_probe_results[model_key] = False
+                return False
+            return None
+
+        content = ""
+        if response and response.choices and response.choices[0].message:
+            content = str(response.choices[0].message.content or "").lower()
+
+        normalized = re.sub(r"\s+", "", content).upper()
+
+        if "MM_OK" in normalized:
+            self.model_multimodal_probe_results[model_key] = True
+            existing = self.model_runtime_overrides.get(model_key, {})
+            existing["multimodal"] = True
+            if existing.get("image_tokens", 0) <= 0:
+                existing["image_tokens"] = self.model_matcher.default_image_tokens
+            self.model_runtime_overrides[model_key] = existing
+            return True
+
+        # 只要不是明确 MM_OK，都按不支持处理（MM_NO/拒绝文案/跑偏回复）
+        self._mark_model_as_text_only(
+            model_name,
+            "探测未确认多模态可用（或明确拒绝图片），后续按文本模型处理。",
+        )
+        self.model_multimodal_probe_results[model_key] = False
+        return False
 
     def _extract_error_signals_regex(self, text: str) -> Dict[str, Any]:
         """从错误文本中提取模型能力信号（正则兜底）"""
@@ -2142,6 +2036,9 @@ class Filter:
         existing = self.model_runtime_overrides.get(model_key, {})
         existing.update(merged_signals)
         self.model_runtime_overrides[model_key] = existing
+
+        if existing.get("multimodal") is False:
+            self.forced_text_only_models.add(model_key)
         self.debug_log(
             1,
             f"已从错误信息学习模型能力: {model_name} -> {existing}",
@@ -2749,18 +2646,23 @@ class Filter:
         multimodal_status = "多模态" if model_info["multimodal"] else "文本"
         family_name = model_info["family"].upper()
         tokens_display = f"{model_info['limit']:,}tokens"
-        match_type_display = {
-            "exact": "精确",
-            "fuzzy": "模糊",
-            "default": "默认",
-            "runtime": "错误学习",
-        }[model_info["match_type"]]
+        match_type = model_info.get("match_type")
+        if match_type == "exact":
+            match_type_display = "精确"
+        elif match_type == "fuzzy":
+            match_type_display = "模糊"
+        elif match_type == "runtime":
+            match_type_display = "错误学习"
+        else:
+            match_type_display = "默认"
 
         print(f"🎯 模型识别: {model_name}")
         print(f"   ├─ 系列: {family_name}")
         print(f"   ├─ 类型: {multimodal_status}")
         print(f"   ├─ 限制: {tokens_display}")
         print(f"   └─ 匹配: {match_type_display}匹配")
+        if model_info.get("hint"):
+            print(f"   ⚠️ 提示: {model_info['hint']}")
 
         if model_info.get("special") == "thinking":
             print(f"   💭 特殊: Thinking模型")
@@ -2842,10 +2744,20 @@ class Filter:
     def get_model_token_limit(self, model_name: str) -> int:
         """获取模型的token限制"""
         model_info = self.analyze_model(model_name)
-        limit = model_info.get("limit", self.valves.default_token_limit)
+
+        # 未学习到真实上限前，使用“最大兜底限制”，避免过早触发压缩
+        if not self._is_model_token_limit_known(model_name):
+            limit = int(getattr(self.valves, "max_fallback_token_limit", 300000) or 300000)
+            source = "fallback"
+        else:
+            limit = int(model_info.get("limit", self.valves.default_token_limit))
+            source = "learned"
+
         safe_limit = int(limit * self.valves.token_safety_ratio)
         self.debug_log(
-            2, f"模型token限制: {model_name} -> {limit} -> {safe_limit}", "⚖️"
+            2,
+            f"模型token限制[{source}]: {model_name} -> {limit} -> {safe_limit}",
+            "⚖️",
         )
         return safe_limit
 
@@ -2924,9 +2836,12 @@ class Filter:
         """判定是否需要进行处理"""
         current_tokens = self.count_messages_tokens(messages)
         has_images = self.has_images_in_messages(messages)
-        model_is_multimodal = self.is_multimodal_model(model_name)
-        token_overflow = current_tokens > target_tokens
-        multimodal_incompatible = has_images and (not model_is_multimodal)
+        token_limit_known = self._is_model_token_limit_known(model_name)
+        token_overflow = token_limit_known and (current_tokens > target_tokens)
+        # 多模态不兼容仅在“已知不支持”时触发，未知模型先直通
+        multimodal_incompatible = has_images and self._is_model_known_non_multimodal(
+            model_name
+        )
         return (
             (token_overflow or multimodal_incompatible),
             token_overflow,
@@ -4445,11 +4360,17 @@ class Filter:
                         f"处理图片 {image_count}/{len(images)}",
                     )
 
-                description = await self.describe_image(
-                    cleaned, progress.event_emitter if progress else None
-                )
+                image_hash = hashlib.md5(cleaned.encode()).hexdigest()
+                if image_hash in self.image_description_cache:
+                    description = self.image_description_cache[image_hash]
+                    self.debug_log(2, f"复用图片描述缓存: {image_hash[:8]}", "♻️")
+                else:
+                    description = await self.describe_image(
+                        cleaned, progress.event_emitter if progress else None
+                    )
+                    self.image_description_cache[image_hash] = description
 
-                image_name = f"img_{hashlib.md5(cleaned.encode()).hexdigest()[:8]}"
+                image_name = f"img_{image_hash[:8]}"
                 image_line = f"[图片{image_count} {image_name}] {description}"
                 processed_content.append(image_line)
 
@@ -4538,8 +4459,27 @@ class Filter:
         if not has_images:
             return "text_only", "无图片内容，按文本处理"
 
+        known_non_multimodal = self._is_model_known_non_multimodal(model_name)
         is_multimodal = self.is_multimodal_model(model_name)
-        self.debug_log(1, f"模型分析: {model_name} | 多模态支持: {is_multimodal}", "🤖")
+
+        if not known_non_multimodal:
+            probe_result = await self.probe_model_multimodal_support(model_name)
+            if probe_result is False:
+                known_non_multimodal = True
+            elif probe_result is True:
+                is_multimodal = True
+            elif not is_multimodal:
+                # 探测未得出结论且当前默认判定为文本模型时，不再盲目直通多模态
+                known_non_multimodal = True
+
+        self.debug_log(
+            1,
+            f"模型分析: {model_name} | 多模态支持: {is_multimodal} | 已知不支持: {known_non_multimodal}",
+            "🤖",
+        )
+
+        if known_non_multimodal:
+            return "vision_to_text", "模型探测/学习后确认不支持多模态，使用图片描述文本"
 
         if is_multimodal:
             budget_sufficient = self.calculate_multimodal_budget_sufficient(
@@ -4549,8 +4489,8 @@ class Filter:
                 return "direct_multimodal", "多模态模型，Token预算充足，直接输入"
             else:
                 return "multimodal_rag", "多模态模型，Token预算不足，使用多模态向量RAG"
-        else:
-            return "vision_to_text", "纯文本模型，先识别图片再处理"
+
+        return "direct_multimodal", "模型能力未知但探测未判定不支持，先直通"
 
     async def process_multimodal_content(
         self,
@@ -4603,6 +4543,10 @@ class Filter:
                     processed_messages, self.current_user_message
                 )
 
+            self._mark_model_as_text_only(
+                model_name,
+                "检测到该模型在当前会话已走视觉转文本流程，后续按不支持多模态处理。",
+            )
             await progress.complete_phase("视觉识别完成")
             return processed_messages
         else:
@@ -5324,5 +5268,27 @@ class Filter:
                     logger=self.logger,
                 )
                 self.memory_log("已启动异步记忆处理", "info")
+
+        # 从模型最终回复中学习“仅文本能力”提示（有些服务不会抛异常，只会文本拒绝图片）
+        try:
+            msgs = body.get("messages", [])
+            last_assistant = None
+            for m in reversed(msgs):
+                if isinstance(m, dict) and m.get("role") == "assistant":
+                    last_assistant = m
+                    break
+            if last_assistant is not None:
+                assistant_text = self.extract_text_from_content(last_assistant.get("content", ""))
+                if self._is_multimodal_refusal_text(assistant_text):
+                    current_model = getattr(self, "_current_model_name", "")
+                    self._mark_model_as_text_only(
+                        current_model,
+                        "模型在回复中声明无法处理图片，已标记为文本模型。",
+                    )
+                    mk = self._normalize_model_name(current_model)
+                    if mk:
+                        self.model_multimodal_probe_results[mk] = False
+        except Exception:
+            pass
 
         return body
