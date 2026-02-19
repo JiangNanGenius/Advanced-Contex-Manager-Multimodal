@@ -1768,18 +1768,13 @@ class Filter:
         self.model_runtime_overrides[model_key] = existing
 
     def _is_model_token_limit_known(self, model_name: str) -> bool:
-        """已知模型（规则识别）或已学习到limit时返回True；仅未知模型走兜底窗口。"""
+        """仅在已学习到明确上下文窗口时返回True：不超限场景不预判上限。"""
         model_key = self._normalize_model_name(model_name)
         if not model_key:
             return False
-
         runtime_override = self.model_runtime_overrides.get(model_key, {})
         limit_val = runtime_override.get("limit")
-        if isinstance(limit_val, (int, float)) and int(limit_val) > 0:
-            return True
-
-        matched_info = self.model_matcher.match_model(model_name)
-        return matched_info.get("match_type") in {"fuzzy", "exact"}
+        return isinstance(limit_val, (int, float)) and int(limit_val) > 0
 
     def _is_multimodal_refusal_text(self, text: str) -> bool:
         """判断文本是否在表达“无法处理图片/仅文本能力”"""
