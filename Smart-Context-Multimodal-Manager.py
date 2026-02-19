@@ -1,7 +1,7 @@
 """
-title: 🚀 高级上下文管理器（多模态+上下文最大化） - v2.6.2
+title: 🚀 高级上下文管理器（多模态+上下文最大化） - v2.6.3
 author: JiangNanGenius
-version: 2.6.2
+version: 2.6.3
 license: MIT
 required_open_webui_version: 0.5.17
 Github: https://github.com/JiangNanGenius

@@ -1,8 +1,8 @@
-# 🚀 高级上下文管理器（多模态 + 上下文最大化）v2.6.2  
-Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.2
+# 🚀 高级上下文管理器（多模态 + 上下文最大化）v2.6.3  
+Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.3
 
 **作者 / Author**: JiangNanGenius  
-**版本 / Version**: 2.6.2  
+**版本 / Version**: 2.6.3  
 **License**: MIT  
 **Open WebUI 最低版本 / Required Open WebUI Version**: 0.5.17  
 **GitHub**: https://github.com/JiangNanGenius  
@@ -270,7 +270,7 @@ forced-prefix add OR (retrieve → LLM action plan → apply).
 ---
 
 ## Changelog (简要)
-- v2.6.2: 稳定消息 ID / 更强的覆盖摘要与预算策略 / Auto Memory 后台机制增强 / 缓存与并发稳定性提升  
+- v2.6.3: 稳定消息 ID / 更强的覆盖摘要与预算策略 / Auto Memory 后台机制增强 / 缓存与并发稳定性提升  
 - v2.6.x: 多模态预处理与兜底策略强化、统计与日志更完整
 
 ---
