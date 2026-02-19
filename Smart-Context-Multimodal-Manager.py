@@ -1522,6 +1522,9 @@ class Filter:
 
         # ========== Token管理 ==========
         default_token_limit: int = Field(default=200000, description="⚖️ 默认token限制")
+        max_fallback_token_limit: int = Field(
+            default=300000, description="🛟 未知模型最大兜底token限制"
+        )
         token_safety_ratio: float = Field(
             default=0.92, description="🛡️ Token安全比例(92%)"
         )
@@ -2714,10 +2717,20 @@ class Filter:
     def get_model_token_limit(self, model_name: str) -> int:
         """获取模型的token限制"""
         model_info = self.analyze_model(model_name)
-        limit = model_info.get("limit", self.valves.default_token_limit)
+
+        # 未学习到真实上限前，使用“最大兜底限制”，避免过早触发压缩
+        if not self._is_model_token_limit_known(model_name):
+            limit = int(getattr(self.valves, "max_fallback_token_limit", 300000) or 300000)
+            source = "fallback"
+        else:
+            limit = int(model_info.get("limit", self.valves.default_token_limit))
+            source = "learned"
+
         safe_limit = int(limit * self.valves.token_safety_ratio)
         self.debug_log(
-            2, f"模型token限制: {model_name} -> {limit} -> {safe_limit}", "⚖️"
+            2,
+            f"模型token限制[{source}]: {model_name} -> {limit} -> {safe_limit}",
+            "⚖️",
         )
         return safe_limit
 

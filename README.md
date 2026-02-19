@@ -90,7 +90,7 @@ Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.3
 - `text_vector_model` / `multimodal_vector_model`：向量模型
 
 #### 5.2 Token 与预算策略
-- `default_token_limit` / `token_safety_ratio` / `target_window_usage`
+- `default_token_limit` / `max_fallback_token_limit` / `token_safety_ratio` / `target_window_usage`
 - `response_buffer_ratio` / `response_buffer_min/max`
 - `max_window_utilization` / `min_preserve_ratio`
 - `enable_zero_loss_guarantee` / `max_budget_adjustment_rounds`
@@ -230,7 +230,7 @@ Best for long technical chats, code/config heavy sessions, and multi-turn reason
 
 ### 5) Configuration (Valves Highlights)
 - API & models: `api_base`, `api_key`, `text_model`, `multimodal_model`, `memory_model`, vector models
-- Token budgeting: `default_token_limit`, `token_safety_ratio`, `target_window_usage`, response buffer
+- Token budgeting: `default_token_limit`, `max_fallback_token_limit`, `token_safety_ratio`, `target_window_usage`, response buffer
 - Coverage planning: thresholds, per-summary budgets, block sizing, upgrade pool
 - Multimodal: preserve images vs vision preprocessing
 - Auto Memory: messages to consider, related memories k, forced prefixes, override memory context
