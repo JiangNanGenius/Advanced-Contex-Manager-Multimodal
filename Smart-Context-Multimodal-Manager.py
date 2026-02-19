@@ -1713,6 +1713,8 @@ class Filter:
         self.current_user_message = None
         self.current_model_info = None
         self.model_runtime_overrides: Dict[str, Dict[str, Any]] = {}
+        self.forced_text_only_models: set[str] = set()
+        self.image_description_cache: Dict[str, str] = {}
 
         # Auto Memory相关
         self.current_user_obj = None
@@ -1734,6 +1736,32 @@ class Filter:
     def _normalize_model_name(self, model_name: str) -> str:
         """标准化模型名，用于运行时能力缓存"""
         return (model_name or "").strip().lower()
+
+    def _is_model_known_non_multimodal(self, model_name: str) -> bool:
+        """仅在“已知不支持多模态”时返回True，避免对未知模型过早转写"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key:
+            return False
+
+        if model_key in self.forced_text_only_models:
+            return True
+
+        runtime_override = self.model_runtime_overrides.get(model_key, {})
+        return runtime_override.get("multimodal") is False
+
+    def _mark_model_as_text_only(self, model_name: str, reason: str = ""):
+        """在发生多模态兼容问题后，将模型标记为文本模型"""
+        model_key = self._normalize_model_name(model_name)
+        if not model_key:
+            return
+
+        self.forced_text_only_models.add(model_key)
+        existing = self.model_runtime_overrides.get(model_key, {})
+        existing["multimodal"] = False
+        existing["image_tokens"] = 0
+        if reason:
+            existing["hint"] = reason
+        self.model_runtime_overrides[model_key] = existing
 
     def _extract_error_signals_regex(self, text: str) -> Dict[str, Any]:
         """从错误文本中提取模型能力信号（正则兜底）"""
@@ -1887,6 +1915,9 @@ class Filter:
         existing = self.model_runtime_overrides.get(model_key, {})
         existing.update(merged_signals)
         self.model_runtime_overrides[model_key] = existing
+
+        if existing.get("multimodal") is False:
+            self.forced_text_only_models.add(model_key)
         self.debug_log(
             1,
             f"已从错误信息学习模型能力: {model_name} -> {existing}",
@@ -2674,9 +2705,11 @@ class Filter:
         """判定是否需要进行处理"""
         current_tokens = self.count_messages_tokens(messages)
         has_images = self.has_images_in_messages(messages)
-        model_is_multimodal = self.is_multimodal_model(model_name)
         token_overflow = current_tokens > target_tokens
-        multimodal_incompatible = has_images and (not model_is_multimodal)
+        # 多模态不兼容仅在“已知不支持”时触发，未知模型先直通
+        multimodal_incompatible = has_images and self._is_model_known_non_multimodal(
+            model_name
+        )
         return (
             (token_overflow or multimodal_incompatible),
             token_overflow,
@@ -4195,11 +4228,17 @@ class Filter:
                         f"处理图片 {image_count}/{len(images)}",
                     )
 
-                description = await self.describe_image(
-                    cleaned, progress.event_emitter if progress else None
-                )
+                image_hash = hashlib.md5(cleaned.encode()).hexdigest()
+                if image_hash in self.image_description_cache:
+                    description = self.image_description_cache[image_hash]
+                    self.debug_log(2, f"复用图片描述缓存: {image_hash[:8]}", "♻️")
+                else:
+                    description = await self.describe_image(
+                        cleaned, progress.event_emitter if progress else None
+                    )
+                    self.image_description_cache[image_hash] = description
 
-                image_name = f"img_{hashlib.md5(cleaned.encode()).hexdigest()[:8]}"
+                image_name = f"img_{image_hash[:8]}"
                 image_line = f"[图片{image_count} {image_name}] {description}"
                 processed_content.append(image_line)
 
@@ -4288,8 +4327,16 @@ class Filter:
         if not has_images:
             return "text_only", "无图片内容，按文本处理"
 
+        known_non_multimodal = self._is_model_known_non_multimodal(model_name)
         is_multimodal = self.is_multimodal_model(model_name)
-        self.debug_log(1, f"模型分析: {model_name} | 多模态支持: {is_multimodal}", "🤖")
+        self.debug_log(
+            1,
+            f"模型分析: {model_name} | 多模态支持: {is_multimodal} | 已知不支持: {known_non_multimodal}",
+            "🤖",
+        )
+
+        if known_non_multimodal:
+            return "vision_to_text", "模型已知不支持多模态，使用图片描述文本"
 
         if is_multimodal:
             budget_sufficient = self.calculate_multimodal_budget_sufficient(
@@ -4299,8 +4346,8 @@ class Filter:
                 return "direct_multimodal", "多模态模型，Token预算充足，直接输入"
             else:
                 return "multimodal_rag", "多模态模型，Token预算不足，使用多模态向量RAG"
-        else:
-            return "vision_to_text", "纯文本模型，先识别图片再处理"
+
+        return "direct_multimodal", "模型能力未知，先直通等待后续错误学习"
 
     async def process_multimodal_content(
         self,
@@ -4353,6 +4400,10 @@ class Filter:
                     processed_messages, self.current_user_message
                 )
 
+            self._mark_model_as_text_only(
+                model_name,
+                "检测到该模型在当前会话已走视觉转文本流程，后续按不支持多模态处理。",
+            )
             await progress.complete_phase("视觉识别完成")
             return processed_messages
         else:
