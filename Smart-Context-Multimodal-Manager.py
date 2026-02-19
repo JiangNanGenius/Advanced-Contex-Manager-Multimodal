@@ -1768,13 +1768,18 @@ class Filter:
         self.model_runtime_overrides[model_key] = existing
 
     def _is_model_token_limit_known(self, model_name: str) -> bool:
-        """仅在已学习到明确上下文窗口时返回True，避免未知模型被提前压缩"""
+        """已知模型（规则识别）或已学习到limit时返回True；仅未知模型走兜底窗口。"""
         model_key = self._normalize_model_name(model_name)
         if not model_key:
             return False
+
         runtime_override = self.model_runtime_overrides.get(model_key, {})
         limit_val = runtime_override.get("limit")
-        return isinstance(limit_val, (int, float)) and int(limit_val) > 0
+        if isinstance(limit_val, (int, float)) and int(limit_val) > 0:
+            return True
+
+        matched_info = self.model_matcher.match_model(model_name)
+        return matched_info.get("match_type") in {"fuzzy", "exact"}
 
     def _is_multimodal_refusal_text(self, text: str) -> bool:
         """判断文本是否在表达“无法处理图片/仅文本能力”"""
@@ -1869,6 +1874,11 @@ class Filter:
 
         if "MM_OK" in normalized:
             self.model_multimodal_probe_results[model_key] = True
+            existing = self.model_runtime_overrides.get(model_key, {})
+            existing["multimodal"] = True
+            if existing.get("image_tokens", 0) <= 0:
+                existing["image_tokens"] = self.model_matcher.default_image_tokens
+            self.model_runtime_overrides[model_key] = existing
             return True
 
         # 只要不是明确 MM_OK，都按不支持处理（MM_NO/拒绝文案/跑偏回复）
