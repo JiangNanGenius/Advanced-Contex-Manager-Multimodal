@@ -1833,8 +1833,30 @@ class Filter:
                 timeout=self.valves.request_timeout,
             )
         except Exception as e:
-            await self.learn_model_capability_from_errors(model_name, error_text=str(e))
-            if self._is_model_known_non_multimodal(model_name):
+            err_text = str(e)
+            await self.learn_model_capability_from_errors(model_name, error_text=err_text)
+
+            # 探测请求本身失败（如 4xx/模型不存在/不接受图片输入）时，优先按不支持处理
+            lowered_err = err_text.lower()
+            probe_hard_fail = any(
+                key in lowered_err
+                for key in [
+                    " 400",
+                    " 404",
+                    "not found",
+                    "invalid",
+                    "unsupported",
+                    "does not support",
+                    "image_url",
+                    "vision",
+                    "multimodal",
+                ]
+            )
+            if probe_hard_fail or self._is_model_known_non_multimodal(model_name):
+                self._mark_model_as_text_only(
+                    model_name,
+                    "多模态探测请求失败，已按文本模型兜底处理。",
+                )
                 self.model_multimodal_probe_results[model_key] = False
                 return False
             return None
@@ -4441,6 +4463,9 @@ class Filter:
                 known_non_multimodal = True
             elif probe_result is True:
                 is_multimodal = True
+            elif not is_multimodal:
+                # 探测未得出结论且当前默认判定为文本模型时，不再盲目直通多模态
+                known_non_multimodal = True
 
         self.debug_log(
             1,
