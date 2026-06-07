@@ -1,11 +1,27 @@
-# 🚀 高级上下文管理器（多模态 + 上下文最大化）v2.6.2  
-Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.2
+# 🚀 高级上下文管理器（多模态 + 上下文最大化）v2.6.3  
+Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.3
 
 **作者 / Author**: JiangNanGenius  
-**版本 / Version**: 2.6.2  
+**版本 / Version**: 2.6.3  
 **License**: MIT  
 **Open WebUI 最低版本 / Required Open WebUI Version**: 0.5.17  
-**GitHub**: https://github.com/JiangNanGenius  
+**GitHub**: https://github.com/JiangNanGenius/Advanced-Contex-Manager-Multimodal  
+
+---
+
+## v2.6.3 更新重点 / What's new
+
+- **未知模型更保守**：未学习到真实上下文窗口前，使用 `max_fallback_token_limit` 兜底，避免过早压缩。
+- **运行时多模态探测**：对未知模型发送轻量图片探测，确认是否支持图像输入。
+- **文本模型学习**：从 API 错误和模型回复中学习“仅文本能力”，后续自动走图片转文本。
+- **图片描述缓存**：按图片 hash 复用 vision 描述，减少重复调用。
+- **更稳的默认匹配**：模型匹配返回结构统一，未知模型带提示信息，便于排障。
+
+- **More conservative unknown-model handling**: uses `max_fallback_token_limit` until a real context limit is learned.
+- **Runtime multimodal probing**: sends a lightweight image probe for unknown models.
+- **Text-only capability learning**: learns from API errors and assistant refusals, then falls back to vision-to-text.
+- **Image description cache**: reuses vision descriptions by image hash.
+- **More stable model matching**: normalized model metadata with hints for troubleshooting.
 
 ---
 
@@ -70,7 +86,7 @@ Advanced Context Manager (Multimodal + Context Window Maximization) v2.6.2
 4. 保存并重启相关服务（如需要）
 
 #### B. Docker / 本地挂载（更通用）
-1. 将脚本保存为一个 `.py` 文件（例如：`advanced_context_manager_v2_6_2.py`）  
+1. 将脚本保存为一个 `.py` 文件（例如：`Smart-Context-Multimodal-Manager.py`）  
 2. 放到 Open WebUI 后端可加载 Filters 的目录（示例：`/app/backend/open_webui/filters/` 或你的自定义 filters 目录）  
 3. 重启容器 / 服务
 
